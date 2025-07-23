@@ -16,7 +16,8 @@ import {
   Upload, 
   Award, 
   ShoppingCart,
-  Trophy
+  Trophy,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Upload Data', href: '/upload', icon: Upload },
   { name: 'Certificates', href: '/certificates', icon: Award },
   { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart },
+  { name: 'SEMA Tool', href: '/sema', icon: Target },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
 ];
 
