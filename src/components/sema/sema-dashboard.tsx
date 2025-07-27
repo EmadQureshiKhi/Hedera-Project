@@ -60,6 +60,9 @@ export default function SemaDashboard() {
     );
   }
 
+  // Show demo banner if in demo mode
+  const isDemoMode = activeClient.status === 'demo';
+
   // Calculate progress metrics
   const stakeholderProgress = stakeholders.length > 0 ? 100 : 0;
   const sampleSizeProgress = sampleParameters ? 100 : 0;
@@ -79,6 +82,23 @@ export default function SemaDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">🎯 Demo Mode Active</h3>
+              <p className="text-blue-100">
+                Explore the complete SEMA process with realistic sample data. All modules are populated for demonstration.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">
         <CardHeader>
@@ -248,32 +268,64 @@ export default function SemaDashboard() {
       </Card>
 
       {/* GRI Framework Info */}
-      <Card>
+      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
         <CardHeader>
-          <CardTitle>GRI Framework Integration</CardTitle>
+          <CardTitle className="text-blue-800 dark:text-blue-200 flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <FileText className="h-4 w-4 text-white" />
+            </div>
+            GRI Framework Integration
+          </CardTitle>
           <CardDescription>
             This tool aligns with Global Reporting Initiative standards
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <h4 className="font-medium">Stakeholder Engagement</h4>
-              <p className="text-sm text-muted-foreground">
+        <CardContent className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                  <Users className="h-5 w-5 text-green-600" />
+                </div>
+                <h4 className="font-semibold text-lg">Stakeholder Engagement</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 Systematic identification and prioritization of stakeholders based on their influence and dependency across economic, social, and environmental dimensions.
               </p>
+              <div className="mt-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs font-medium text-green-600">Comprehensive Coverage</span>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h4 className="font-medium">Materiality Assessment</h4>
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                  <Target className="h-5 w-5 text-purple-600" />
+                </div>
+                <h4 className="font-semibold text-lg">Materiality Assessment</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 Dual-perspective evaluation combining external stakeholder importance with internal business impact to identify material topics.
               </p>
+              <div className="mt-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span className="text-xs font-medium text-purple-600">GRI Framework Aligned</span>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h4 className="font-medium">GRI Reporting</h4>
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-orange-600" />
+                </div>
+                <h4 className="font-semibold text-lg">GRI Reporting</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 Automated mapping of material topics to relevant GRI disclosure standards for comprehensive sustainability reporting.
               </p>
+              <div className="mt-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <span className="text-xs font-medium text-orange-600">Industry Best Practices</span>
+              </div>
             </div>
           </div>
         </CardContent>

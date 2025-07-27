@@ -13,6 +13,18 @@ import {
 import { useSema } from './sema-context';
 import { ChevronDown, Building, Plus } from 'lucide-react';
 
+const DEMO_CLIENT = {
+  id: 'demo-client',
+  user_id: 'demo-user',
+  name: 'Demo Organization',
+  description: 'Complete SEMA demonstration with sample data',
+  industry: 'Technology',
+  size: 'Medium',
+  status: 'demo' as const,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
 export function SemaClientSelector() {
   const { clients, activeClient, setActiveClient } = useSema();
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +34,13 @@ export function SemaClientSelector() {
     // Simulate loading time
     await new Promise(resolve => setTimeout(resolve, 500));
     setActiveClient(client);
+    setIsLoading(false);
+  };
+
+  const handleDemoMode = async () => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setActiveClient(DEMO_CLIENT);
     setIsLoading(false);
   };
 
@@ -72,6 +91,21 @@ export function SemaClientSelector() {
             )}
           </DropdownMenuItem>
         ))}
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleDemoMode}>
+          <div className="flex items-center justify-between w-full">
+            <div>
+              <div className="font-medium">Demo Mode</div>
+              <div className="text-xs text-muted-foreground">
+                Complete SEMA showcase
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+              Demo
+            </Badge>
+          </div>
+        </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         <DropdownMenuItem>

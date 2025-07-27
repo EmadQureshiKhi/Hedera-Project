@@ -138,6 +138,307 @@ export function SemaProvider({ children }: { children: ReactNode }) {
   const [reports, setReports] = useState<SemaReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Demo data for showcase
+  const getDemoData = () => ({
+    stakeholders: [
+      {
+        id: 'demo-stakeholder-1',
+        client_id: 'demo-client',
+        name: 'Employees',
+        category: 'Internal' as const,
+        stakeholder_type: 'Employees',
+        dependency_economic: 5,
+        dependency_social: 4,
+        dependency_environmental: 3,
+        influence_economic: 4,
+        influence_social: 5,
+        influence_environmental: 3,
+        total_score: 24,
+        normalized_score: 0.8,
+        influence_category: 'High' as const,
+        is_priority: true,
+        population_size: 500,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-stakeholder-2',
+        client_id: 'demo-client',
+        name: 'Customers',
+        category: 'External' as const,
+        stakeholder_type: 'Customers',
+        dependency_economic: 5,
+        dependency_social: 3,
+        dependency_environmental: 2,
+        influence_economic: 5,
+        influence_social: 4,
+        influence_environmental: 2,
+        total_score: 21,
+        normalized_score: 0.7,
+        influence_category: 'High' as const,
+        is_priority: true,
+        population_size: 10000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-stakeholder-3',
+        client_id: 'demo-client',
+        name: 'Investors',
+        category: 'External' as const,
+        stakeholder_type: 'Investors',
+        dependency_economic: 5,
+        dependency_social: 2,
+        dependency_environmental: 3,
+        influence_economic: 5,
+        influence_social: 3,
+        influence_environmental: 4,
+        total_score: 22,
+        normalized_score: 0.73,
+        influence_category: 'High' as const,
+        is_priority: true,
+        population_size: 50,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-stakeholder-4',
+        client_id: 'demo-client',
+        name: 'Suppliers',
+        category: 'External' as const,
+        stakeholder_type: 'Suppliers',
+        dependency_economic: 4,
+        dependency_social: 3,
+        dependency_environmental: 4,
+        influence_economic: 3,
+        influence_social: 2,
+        influence_environmental: 4,
+        total_score: 20,
+        normalized_score: 0.67,
+        influence_category: 'Medium' as const,
+        is_priority: true,
+        population_size: 200,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-stakeholder-5',
+        client_id: 'demo-client',
+        name: 'Local Community',
+        category: 'External' as const,
+        stakeholder_type: 'Community',
+        dependency_economic: 2,
+        dependency_social: 4,
+        dependency_environmental: 5,
+        influence_economic: 3,
+        influence_social: 4,
+        influence_environmental: 5,
+        total_score: 23,
+        normalized_score: 0.77,
+        influence_category: 'High' as const,
+        is_priority: true,
+        population_size: 5000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    sampleParameters: {
+      id: 'demo-sample-params',
+      client_id: 'demo-client',
+      confidence_level: 0.95,
+      margin_error: 0.05,
+      population_proportion: 0.5,
+      z_score: 1.96,
+      base_sample_size: 384,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    materialTopics: [
+      {
+        id: 'demo-material-1',
+        client_id: 'demo-client',
+        name: 'GHG Emissions',
+        description: 'Direct and indirect greenhouse gas emissions',
+        category: 'Environmental' as const,
+        gri_code: 'GRI 305',
+        average_score: 8.5,
+        response_count: 45,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-material-2',
+        client_id: 'demo-client',
+        name: 'Economic Performance',
+        description: 'Financial performance and economic impact',
+        category: 'Economic' as const,
+        gri_code: 'GRI 201',
+        average_score: 9.2,
+        response_count: 50,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-material-3',
+        client_id: 'demo-client',
+        name: 'Employee Health & Safety',
+        description: 'Occupational health and safety practices',
+        category: 'Social' as const,
+        gri_code: 'GRI 403',
+        average_score: 8.8,
+        response_count: 48,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-material-4',
+        client_id: 'demo-client',
+        name: 'Data Privacy',
+        description: 'Customer data protection and privacy',
+        category: 'Social' as const,
+        gri_code: 'GRI 418',
+        average_score: 7.9,
+        response_count: 42,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-material-5',
+        client_id: 'demo-client',
+        name: 'Water Management',
+        description: 'Water usage and conservation',
+        category: 'Environmental' as const,
+        gri_code: 'GRI 303',
+        average_score: 6.5,
+        response_count: 38,
+        is_material: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-material-6',
+        client_id: 'demo-client',
+        name: 'Supply Chain Ethics',
+        description: 'Ethical sourcing and supplier practices',
+        category: 'Social' as const,
+        gri_code: 'GRI 414',
+        average_score: 7.2,
+        response_count: 40,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    internalTopics: [
+      {
+        id: 'demo-internal-1',
+        client_id: 'demo-client',
+        name: 'Regulatory Compliance',
+        description: 'Risk of non-compliance with environmental regulations',
+        category: 'Environmental' as const,
+        severity: 4,
+        likelihood: 3,
+        significance: 12,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-internal-2',
+        client_id: 'demo-client',
+        name: 'Talent Retention',
+        description: 'Risk of losing key employees',
+        category: 'Social' as const,
+        severity: 3,
+        likelihood: 4,
+        significance: 12,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-internal-3',
+        client_id: 'demo-client',
+        name: 'Supply Chain Disruption',
+        description: 'Risk of supply chain interruptions',
+        category: 'Economic' as const,
+        severity: 5,
+        likelihood: 3,
+        significance: 15,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-internal-4',
+        client_id: 'demo-client',
+        name: 'Cybersecurity Threats',
+        description: 'Risk of data breaches and cyber attacks',
+        category: 'Social' as const,
+        severity: 4,
+        likelihood: 4,
+        significance: 16,
+        is_material: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-internal-5',
+        client_id: 'demo-client',
+        name: 'Climate Change Impact',
+        description: 'Physical risks from climate change',
+        category: 'Environmental' as const,
+        severity: 3,
+        likelihood: 3,
+        significance: 9,
+        is_material: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
+    questionnaireResponses: [
+      {
+        id: 'demo-response-1',
+        topic_id: 'demo-material-1',
+        stakeholder_type: 'Employees',
+        respondent_name: 'John Smith',
+        score: 9,
+        comments: 'Very important for our future',
+        response_time: 120,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-response-2',
+        topic_id: 'demo-material-1',
+        stakeholder_type: 'Customers',
+        respondent_name: 'Sarah Johnson',
+        score: 8,
+        comments: 'Critical for brand reputation',
+        response_time: 95,
+        created_at: new Date().toISOString(),
+      },
+    ],
+    reports: [
+      {
+        id: 'demo-report-1',
+        client_id: 'demo-client',
+        title: 'Materiality Assessment Report 2024',
+        report_type: 'materiality_assessment' as const,
+        material_topics: [],
+        gri_disclosures: {},
+        process_summary: {},
+        status: 'final' as const,
+        generated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ],
+  });
+
   // Load clients on mount
   useEffect(() => {
     if (user) {
@@ -148,7 +449,11 @@ export function SemaProvider({ children }: { children: ReactNode }) {
   // Load data when active client changes
   useEffect(() => {
     if (activeClient) {
-      refreshData();
+      if (activeClient.status === 'demo') {
+        loadDemoData();
+      } else {
+        refreshData();
+      }
     }
   }, [activeClient]);
 
@@ -181,6 +486,17 @@ export function SemaProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error loading SEMA clients:', error);
     }
+  };
+
+  const loadDemoData = () => {
+    const demoData = getDemoData();
+    setStakeholders(demoData.stakeholders);
+    setSampleParameters(demoData.sampleParameters);
+    setMaterialTopics(demoData.materialTopics);
+    setInternalTopics(demoData.internalTopics);
+    setQuestionnaireResponses(demoData.questionnaireResponses);
+    setReports(demoData.reports);
+    setIsLoading(false);
   };
 
   // Expose loadClients for external use
