@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSema } from './sema-context';
@@ -7,7 +8,8 @@ import {
   Grid3X3, 
   TrendingUp, 
   Target,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 
 export default function MaterialityMatrix() {
@@ -37,6 +39,7 @@ export default function MaterialityMatrix() {
       category: topic.category,
       externalImportance: topic.average_score, // 0-10 scale
       internalImpact: 0, // No internal assessment
+      internalImpactRaw: 0, // Keep raw 25-scale for display
       source: 'external' as const,
       isMaterial: topic.is_material
     })),
@@ -45,7 +48,8 @@ export default function MaterialityMatrix() {
       name: topic.name,
       category: topic.category,
       externalImportance: 0, // No external assessment
-      internalImpact: topic.significance, // 0-25 scale, normalize to 0-10
+      internalImpact: topic.significance / 2.5, // Normalize to 0-10 for positioning
+      internalImpactRaw: topic.significance, // Keep raw 25-scale for display
       source: 'internal' as const,
       isMaterial: topic.is_material
     }))
@@ -56,14 +60,12 @@ export default function MaterialityMatrix() {
     const existing = acc.find(t => t.name.toLowerCase() === topic.name.toLowerCase());
     if (existing) {
       existing.externalImportance = Math.max(existing.externalImportance, topic.externalImportance);
-      existing.internalImpact = Math.max(existing.internalImpact, topic.internalImpact / 2.5); // Normalize 25 scale to 10
+      existing.internalImpact = Math.max(existing.internalImpact, topic.internalImpact);
+      existing.internalImpactRaw = Math.max(existing.internalImpactRaw, topic.internalImpactRaw);
       existing.source = 'both';
       existing.isMaterial = existing.isMaterial || topic.isMaterial;
     } else {
-      acc.push({
-        ...topic,
-        internalImpact: topic.source === 'internal' ? topic.internalImpact / 2.5 : topic.internalImpact
-      });
+      acc.push(topic);
     }
     return acc;
   }, [] as any[]);
@@ -73,6 +75,9 @@ export default function MaterialityMatrix() {
     t.externalImportance >= 7 && t.internalImpact >= 4
   ).length;
   const bothAssessedTopics = mergedTopics.filter(t => t.source === 'both').length;
+
+  // State for selected topic
+  const [selectedTopic, setSelectedTopic] = useState<any>(null);
 
   return (
     <div className="space-y-6">
@@ -130,7 +135,27 @@ export default function MaterialityMatrix() {
       {/* Materiality Matrix */}
       <Card>
         <CardHeader>
-          <CardTitle>Materiality Matrix</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Materiality Matrix</CardTitle>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                <span>Economic</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                <span>Environmental</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                <span>Social</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded-full border-2 border-red-600"></div>
+                <span>Material</span>
+              </div>
+            </div>
+          </div>
           <CardDescription>
             Topics plotted by external importance (stakeholder view) vs internal impact (business view)
           </CardDescription>
@@ -147,69 +172,93 @@ export default function MaterialityMatrix() {
           ) : (
             <div className="space-y-6">
               {/* Matrix Chart */}
-              <div className="relative">
-                <div className="w-full h-96 border-2 border-muted relative bg-gradient-to-tr from-green-50 via-yellow-50 to-red-50">
-                  {/* Quadrant lines */}
+              <div className="relative bg-gray-50 dark:bg-gray-900 p-8 rounded-xl">
+                <div className="w-full h-96 border-2 border-gray-200 dark:border-gray-700 relative bg-white dark:bg-gray-800 rounded-lg">
+                  {/* Grid lines */}
                   <div className="absolute inset-0">
-                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/30"></div>
-                    <div className="absolute top-1/2 left-0 right-0 h-px bg-muted-foreground/30"></div>
+                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-600"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-300 dark:bg-gray-600"></div>
                   </div>
                   
                   {/* Quadrant labels */}
-                  <div className="absolute top-2 left-2 text-xs text-muted-foreground">
-                    Low External<br/>High Internal
+                  <div className="absolute top-4 left-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="font-medium">Low-High</div>
+                    <div className="text-xs">Manage</div>
                   </div>
-                  <div className="absolute top-2 right-2 text-xs text-muted-foreground text-right">
-                    High External<br/>High Internal<br/>
-                    <span className="font-bold text-red-600">PRIORITY</span>
+                  <div className="absolute top-4 right-4 text-sm text-gray-600 dark:text-gray-400 text-right">
+                    <div className="font-medium">High-High</div>
+                    <div className="text-xs font-bold text-red-600">Priority</div>
                   </div>
-                  <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
-                    Low External<br/>Low Internal
+                  <div className="absolute bottom-4 left-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="font-medium">Low-Low</div>
+                    <div className="text-xs">Minimal</div>
                   </div>
-                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground text-right">
-                    High External<br/>Low Internal
+                  <div className="absolute bottom-4 right-4 text-sm text-gray-600 dark:text-gray-400 text-right">
+                    <div className="font-medium">High-Low</div>
+                    <div className="text-xs">Monitor</div>
+                  </div>
+
+                  {/* Axis labels */}
+                  <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    External Stakeholder Importance →
+                  </div>
+                  <div className="absolute -left-20 top-1/2 transform -translate-y-1/2 -rotate-90 text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Internal Impact Significance →
                   </div>
 
                   {/* Plot topics */}
                   {mergedTopics.map((topic, index) => {
-                    const x = (topic.externalImportance / 10) * 100; // Convert to percentage
-                    const y = 100 - (topic.internalImpact / 10) * 100; // Invert Y axis
+                    // Add padding to keep points inside the chart area
+                    const padding = 5; // 5% padding on each side
+                    const x = padding + (topic.externalImportance / 10) * (100 - 2 * padding);
+                    const y = padding + (1 - topic.internalImpact / 10) * (100 - 2 * padding);
+                    
+                    // Determine color based on category
+                    let color = 'bg-blue-500'; // Default Economic
+                    if (topic.category === 'Environmental') color = 'bg-green-500';
+                    if (topic.category === 'Social') color = 'bg-purple-500';
+                    
+                    // Add red border for material topics
+                    const borderClass = topic.isMaterial ? 'border-2 border-red-600' : 'border border-gray-300';
                     
                     return (
                       <div
                         key={topic.id}
-                        className={`absolute w-3 h-3 rounded-full transform -translate-x-1/2 -translate-y-1/2 cursor-pointer ${
-                          topic.isMaterial ? 'bg-red-500' : 'bg-blue-500'
-                        } hover:scale-150 transition-transform`}
+                        className={`absolute w-5 h-5 rounded-full transform -translate-x-1/2 -translate-y-1/2 cursor-pointer ${color} ${borderClass} hover:scale-125 transition-all duration-200 shadow-lg z-10 group`}
                         style={{ left: `${x}%`, top: `${y}%` }}
-                        title={`${topic.name} (${topic.externalImportance.toFixed(1)}, ${topic.internalImpact.toFixed(1)})`}
+                        onMouseEnter={() => setSelectedTopic(topic)}
+                        onMouseLeave={() => setSelectedTopic(null)}
                       >
-                        <div className="absolute left-4 top-0 bg-white border rounded px-1 py-0.5 text-xs whitespace-nowrap shadow-lg opacity-0 hover:opacity-100 transition-opacity z-10">
-                          {topic.name}
+                        {/* Hover tooltip */}
+                        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg p-3 shadow-xl min-w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20">
+                          <h4 className="font-bold text-sm mb-2">{topic.name}</h4>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">External:</span>
+                              <span className="font-medium">{topic.externalImportance.toFixed(1)}/10</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Internal:</span>
+                              <span className="font-medium">{topic.internalImpactRaw}/25</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Category:</span>
+                              <Badge variant={topic.category === 'Environmental' ? 'default' : 
+                                            topic.category === 'Social' ? 'secondary' : 'outline'} className="text-xs">
+                                {topic.category}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Material:</span>
+                              <Badge variant={topic.isMaterial ? 'default' : 'outline'} className="text-xs">
+                                {topic.isMaterial ? 'Yes' : 'No'}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-                </div>
-                
-                {/* Axis labels */}
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm font-medium">
-                  External Importance (Stakeholder Perspective) →
-                </div>
-                <div className="absolute -left-8 top-1/2 transform -translate-y-1/2 -rotate-90 text-sm font-medium">
-                  Internal Impact (Business Perspective) →
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span>Material Topics</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span>Non-Material Topics</span>
                 </div>
               </div>
             </div>
@@ -265,8 +314,8 @@ export default function MaterialityMatrix() {
                             </span>
                           </td>
                           <td className="p-2 text-center">
-                            <span className={topic.internalImpact >= 4 ? 'font-bold text-green-600' : ''}>
-                              {topic.internalImpact.toFixed(1)}/10
+                            <span className={topic.internalImpactRaw >= 10 ? 'font-bold text-green-600' : ''}>
+                              {topic.internalImpactRaw}/25
                             </span>
                           </td>
                           <td className="p-2 text-center">
@@ -303,58 +352,61 @@ export default function MaterialityMatrix() {
         </CardContent>
       </Card>
 
-      {/* Matrix Methodology */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Matrix Methodology</CardTitle>
-          <CardDescription>
-            Understanding the materiality assessment framework
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Matrix Methodology - Blue Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-3xl p-8 text-white relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent"></div>
+        <div className="absolute top-0 right-0 w-1/3 h-full opacity-10">
+          <div className="h-full w-full bg-gradient-to-l from-white/20 to-transparent"></div>
+        </div>
+        
+        <div className="relative z-10">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Matrix Methodology</h2>
+          </div>
+          
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
-              <h4 className="font-medium">External Importance (X-Axis)</h4>
-              <div className="space-y-2 text-sm">
-                <p>• Derived from stakeholder questionnaire responses</p>
-                <p>• Scale: 1-10 (stakeholder rating of topic importance)</p>
-                <p>• Threshold: Topics scoring ≥7 are considered externally material</p>
-                <p>• Represents: How important stakeholders consider this topic</p>
+            {/* X-Axis Section */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">X-Axis: External Importance</h3>
+              <p className="text-blue-50 leading-relaxed">
+                Based on stakeholder feedback scores (1-10 scale). Topics scoring 
+                ≥7 are considered externally material by stakeholders.
+              </p>
+            </div>
+            
+            {/* Y-Axis Section */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">Y-Axis: Internal Impact</h3>
+              <p className="text-blue-50 leading-relaxed">
+                Based on internal assessment using Severity × Likelihood (1-25 
+                scale). Topics scoring ≥10 are considered internally material.
+              </p>
+            </div>
+            
+            {/* Quadrant Analysis */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">Quadrant Analysis</h3>
+              <div className="space-y-2 text-blue-50">
+                <div>• High-High: Priority topics for immediate action</div>
+                <div>• High-Low: Monitor external stakeholder concerns</div>
+                <div>• Low-High: Manage internal risks effectively</div>
+                <div>• Low-Low: Minimal attention required</div>
               </div>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-medium">Internal Impact (Y-Axis)</h4>
-              <div className="space-y-2 text-sm">
-                <p>• Derived from internal business impact assessment</p>
-                <p>• Scale: 1-10 (normalized from severity × likelihood)</p>
-                <p>• Threshold: Topics scoring ≥4 are considered internally material</p>
-                <p>• Represents: Business significance and potential impact</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h4 className="font-medium">Materiality Determination</h4>
-              <div className="space-y-2 text-sm">
-                <p>• A topic is material if it meets either threshold</p>
-                <p>• High Priority: Both external ≥7 AND internal ≥4</p>
-                <p>• Topics in the top-right quadrant require immediate attention</p>
-                <p>• Regular review ensures materiality remains current</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h4 className="font-medium">GRI Alignment</h4>
-              <div className="space-y-2 text-sm">
-                <p>• Follows GRI Standards materiality principle</p>
-                <p>• Considers both impact on stakeholders and business</p>
-                <p>• Supports GRI 3: Material Topics disclosure</p>
-                <p>• Enables focused sustainability reporting</p>
-              </div>
+            {/* Materiality Determination */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold mb-4 text-white">Materiality Determination</h3>
+              <p className="text-blue-50 leading-relaxed">
+                Topics are considered material if they meet either external (≥7) or 
+                internal (≥10) thresholds, with priority given to high-high quadrant 
+                topics.
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

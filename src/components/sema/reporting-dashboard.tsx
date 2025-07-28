@@ -14,7 +14,10 @@ import {
   AlertCircle,
   BarChart3,
   Users,
-  Target
+  Target,
+  Database,
+  Calendar,
+  TrendingUp
 } from 'lucide-react';
 
 export default function ReportingDashboard() {
@@ -55,64 +58,124 @@ export default function ReportingDashboard() {
     const existing = acc.find(t => t.name.toLowerCase() === topic.name.toLowerCase());
     if (!existing) {
       acc.push(topic);
+    } else {
+      // Merge data if topic exists in both assessments
+      if (topic.source === 'external' && existing.source === 'internal') {
+        existing.external_score = topic.average_score;
+        existing.external_responses = topic.response_count;
+        existing.gri_code = topic.gri_code;
+        existing.source = 'both';
+      } else if (topic.source === 'internal' && existing.source === 'external') {
+        existing.internal_score = topic.significance;
+        existing.severity = topic.severity;
+        existing.likelihood = topic.likelihood;
+        existing.source = 'both';
+      }
     }
     return acc;
   }, [] as any[]);
 
   // GRI Disclosure mapping
-  const griDisclosures = finalMaterialTopics.map(topic => ({
-    topic: topic.name,
-    category: topic.category,
-    griCode: topic.gri_code || 'TBD',
-    status: topic.gri_code ? 'Mapped' : 'Pending'
-  }));
+  const griDisclosures = finalMaterialTopics
+    .filter(topic => topic.gri_code)
+    .map(topic => ({
+      topic: topic.name,
+      category: topic.category,
+      griCode: topic.gri_code,
+      status: 'Mapped'
+    }));
 
-  // Process completion status
-  const processSteps = [
-    {
-      name: 'Stakeholder Engagement',
-      description: 'Identify and prioritize stakeholders',
-      completed: stakeholders.length > 0,
-      progress: stakeholders.length > 0 ? 100 : 0,
-      icon: Users
-    },
-    {
-      name: 'Sample Size Calculation',
-      description: 'Determine engagement sample sizes',
-      completed: !!sampleParameters,
-      progress: sampleParameters ? 100 : 0,
-      icon: Target
-    },
-    {
-      name: 'External Assessment',
-      description: 'Gather stakeholder feedback',
-      completed: materialTopics.length > 0,
-      progress: materialTopics.length > 0 ? 100 : 0,
-      icon: BarChart3
-    },
-    {
-      name: 'Internal Assessment',
-      description: 'Evaluate business impact',
-      completed: internalTopics.length > 0,
-      progress: internalTopics.length > 0 ? 100 : 0,
-      icon: CheckCircle
-    },
-    {
-      name: 'Report Generation',
-      description: 'Create sustainability reports',
-      completed: finalMaterialTopics.length > 0,
-      progress: finalMaterialTopics.length > 0 ? 100 : 0,
-      icon: FileText
-    }
-  ];
-
-  const overallProgress = Math.round(
-    processSteps.reduce((sum, step) => sum + step.progress, 0) / processSteps.length
-  );
+  const totalGriDisclosures = finalMaterialTopics.length;
+  const mappedGriDisclosures = griDisclosures.length;
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Header Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Reporting Dashboard</h1>
+            <p className="text-muted-foreground">
+              Final material topics and GRI-ready sustainability disclosures for {activeClient.name}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Generated: {new Date().toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'numeric', 
+              day: 'numeric' 
+            })}</span>
+            <div className="w-2 h-2 bg-green-500 rounded-full ml-2"></div>
+          </div>
+        </div>
+
+        {/* SEMA Process Summary */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-8 lg:grid-cols-2">
+              {/* Process Steps */}
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">SEMA Process Summary</h3>
+                <div className="space-y-5">
+                  {[
+                    { name: 'Stakeholder Engagement', icon: Users, progress: 100 },
+                    { name: 'Materiality Assessment', icon: TrendingUp, progress: 100 },
+                    { name: 'Topic Validation', icon: CheckCircle, progress: 100 },
+                    { name: 'Report Preparation', icon: FileText, progress: 100 }
+                  ].map((step, index) => {
+                    const Icon = step.icon;
+                    return (
+                      <div key={index} className="flex items-center gap-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                        <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                          <Icon className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">{step.name}</span>
+                            <span className="text-sm font-bold">{step.progress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${step.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Key Metrics */}
+              <div className="bg-blue-50 dark:bg-blue-950 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                <h3 className="text-xl font-bold mb-6 text-blue-900 dark:text-blue-100">Key Metrics</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-blue-900 rounded-lg border border-blue-100 dark:border-blue-700">
+                    <span className="text-muted-foreground">Stakeholders Engaged</span>
+                    <span className="text-2xl font-bold text-blue-600">{stakeholders.filter(s => s.is_priority).length}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-blue-900 rounded-lg border border-blue-100 dark:border-blue-700">
+                    <span className="text-muted-foreground">Topics Assessed</span>
+                    <span className="text-2xl font-bold text-blue-600">{materialTopics.length + internalTopics.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-blue-900 rounded-lg border border-blue-100 dark:border-blue-700">
+                    <span className="text-muted-foreground">Material Topics</span>
+                    <span className="text-2xl font-bold text-green-600">{finalMaterialTopics.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-blue-900 rounded-lg border border-blue-100 dark:border-blue-700">
+                    <span className="text-muted-foreground">GRI Disclosures</span>
+                    <span className="text-2xl font-bold text-blue-600">{mappedGriDisclosures}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* New Summary Cards - Matching your design */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
@@ -131,8 +194,8 @@ export default function ReportingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">GRI Disclosures</p>
-                <p className="text-2xl font-bold">{griDisclosures.filter(d => d.status === 'Mapped').length}</p>
-                <p className="text-xs text-muted-foreground">of {griDisclosures.length} mapped</p>
+                <p className="text-2xl font-bold">{mappedGriDisclosures}</p>
+                <p className="text-xs text-muted-foreground">of {totalGriDisclosures} mapped</p>
               </div>
               <FileText className="h-8 w-8 text-blue-600" />
             </div>
@@ -144,7 +207,7 @@ export default function ReportingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Process Complete</p>
-                <p className="text-2xl font-bold">{overallProgress}%</p>
+                <p className="text-2xl font-bold">100%</p>
               </div>
               <BarChart3 className="h-8 w-8 text-purple-600" />
             </div>
@@ -164,53 +227,13 @@ export default function ReportingDashboard() {
         </Card>
       </div>
 
-      {/* SEMA Process Summary */}
+      {/* Final Material Topics - New Card-based Design */}
       <Card>
         <CardHeader>
-          <CardTitle>SEMA Process Summary</CardTitle>
-          <CardDescription>
-            Overview of completed assessment stages
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {processSteps.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <div key={index} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <div className="flex-shrink-0">
-                    {step.completed ? (
-                      <CheckCircle className="h-6 w-6 text-green-600" />
-                    ) : (
-                      <Clock className="h-6 w-6 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{step.name}</h4>
-                      <Badge 
-                        variant={step.completed ? 'default' : 'outline'}
-                        className={step.completed ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
-                      >
-                        {step.completed ? 'Complete' : 'Pending'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {step.description}
-                    </p>
-                    <Progress value={step.progress} className="h-2" />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <CardTitle>Final Material Topics</CardTitle>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Final Material Topics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Final Material Topics</CardTitle>
           <CardDescription>
             Topics identified as material through the SEMA process
           </CardDescription>
@@ -224,44 +247,88 @@ export default function ReportingDashboard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {finalMaterialTopics.map((topic, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{topic.name}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={topic.category === 'Environmental' ? 'default' : 
-                                    topic.category === 'Social' ? 'secondary' : 'outline'}>
-                        {topic.category}
-                      </Badge>
-                      <Badge variant="outline">
-                        {topic.source === 'external' ? 'External' : 'Internal'} Assessment
-                      </Badge>
+            <div className="space-y-6">
+              {finalMaterialTopics.map((topic, index) => {
+                const externalScore = topic.external_score || topic.average_score || 0;
+                const internalScore = topic.internal_score || topic.significance || 0;
+                const hasExternal = topic.source === 'external' || topic.source === 'both';
+                const hasInternal = topic.source === 'internal' || topic.source === 'both';
+                
+                return (
+                  <div key={index} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 border">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">{topic.name}</h3>
+                          <Badge variant={topic.category === 'Environmental' ? 'default' : 
+                                        topic.category === 'Social' ? 'secondary' : 'outline'}>
+                            {topic.category}
+                          </Badge>
+                        </div>
+                      </div>
                       {topic.gri_code && (
-                        <Badge variant="outline">{topic.gri_code}</Badge>
+                        <div className="text-right">
+                          <p className="text-sm text-blue-600 font-medium">GRI Disclosure</p>
+                          <p className="text-lg font-bold text-blue-600">{topic.gri_code}</p>
+                        </div>
                       )}
                     </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 mb-4">
+                      {hasExternal && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">External Score:</p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full" 
+                                style={{ width: `${(externalScore / 10) * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="font-bold">{externalScore}/10</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasInternal && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Internal Score:</p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div 
+                                className="bg-green-500 h-2 rounded-full" 
+                                style={{ width: `${(internalScore / 25) * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="font-bold">{internalScore}/25</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Rationale</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {topic.description || getTopicRationale(topic.name, topic.category)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    {topic.source === 'external' ? (
-                      <p className="text-sm">Score: {topic.average_score?.toFixed(1)}/10</p>
-                    ) : (
-                      <p className="text-sm">Significance: {topic.significance}/25</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* GRI Disclosures */}
+      {/* GRI Disclosures - Cleaner Design */}
       <Card>
         <CardHeader>
           <CardTitle>GRI Disclosure Mapping</CardTitle>
           <CardDescription>
-            Material topics mapped to GRI Standards
+            Material topics mapped to GRI Standards for comprehensive reporting
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -273,111 +340,172 @@ export default function ReportingDashboard() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Material Topic</th>
-                    <th className="text-left p-2">Category</th>
-                    <th className="text-center p-2">GRI Code</th>
-                    <th className="text-center p-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {griDisclosures.map((disclosure, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="p-2 font-medium">{disclosure.topic}</td>
-                      <td className="p-2">
-                        <Badge variant={disclosure.category === 'Environmental' ? 'default' : 
-                                      disclosure.category === 'Social' ? 'secondary' : 'outline'}>
-                          {disclosure.category}
-                        </Badge>
-                      </td>
-                      <td className="p-2 text-center">
-                        <code className="bg-muted px-2 py-1 rounded text-xs">
-                          {disclosure.griCode}
-                        </code>
-                      </td>
-                      <td className="p-2 text-center">
-                        <Badge variant={disclosure.status === 'Mapped' ? 'default' : 'outline'}>
-                          {disclosure.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid gap-3">
+              {griDisclosures.map((disclosure, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">{disclosure.topic}</h4>
+                      <Badge variant={disclosure.category === 'Environmental' ? 'default' : 
+                                    disclosure.category === 'Social' ? 'secondary' : 'outline'} 
+                             className="text-xs">
+                        {disclosure.category}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <code className="bg-blue-100 dark:bg-blue-900 text-blue-600 px-3 py-1 rounded-lg font-mono text-sm">
+                      {disclosure.griCode}
+                    </code>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      {disclosure.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Export Options */}
+      {/* Export Options - New Design Matching Your Screenshot */}
       <Card>
         <CardHeader>
-          <CardTitle>Export & Sharing</CardTitle>
+          <div className="flex items-center gap-2">
+            <Download className="h-5 w-5 text-blue-600" />
+            <CardTitle>Export Options</CardTitle>
+          </div>
           <CardDescription>
-            Generate and share your SEMA assessment results
+            Generate and download your SEMA assessment results in multiple formats
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button className="h-auto p-4 flex flex-col items-center space-y-2">
-              <Download className="h-6 w-6" />
-              <div className="text-center">
-                <p className="font-medium">Export to Excel</p>
-                <p className="text-xs text-muted-foreground">Complete data export</p>
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Excel Report */}
+            <div className="bg-green-50 dark:bg-green-950 rounded-xl p-6 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-green-800 dark:text-green-200">Excel Report</h3>
+                  <p className="text-sm text-green-600 dark:text-green-400">Complete SEMA analysis</p>
+                </div>
               </div>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-              <FileText className="h-6 w-6" />
-              <div className="text-center">
-                <p className="font-medium">Generate PDF Report</p>
-                <p className="text-xs text-muted-foreground">Executive summary</p>
+              <ul className="text-sm text-green-700 dark:text-green-300 space-y-1 mb-4">
+                <li>• Stakeholder engagement data</li>
+                <li>• Material topics with scores</li>
+                <li>• GRI disclosure mapping</li>
+                <li>• Statistical calculations</li>
+              </ul>
+              <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+                Download Excel
+              </Button>
+            </div>
+
+            {/* PDF Summary */}
+            <div className="bg-red-50 dark:bg-red-950 rounded-xl p-6 border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-red-800 dark:text-red-200">PDF Summary</h3>
+                  <p className="text-sm text-red-600 dark:text-red-400">Executive summary</p>
+                </div>
               </div>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-              <Share2 className="h-6 w-6" />
-              <div className="text-center">
-                <p className="font-medium">Share Results</p>
-                <p className="text-xs text-muted-foreground">Stakeholder distribution</p>
+              <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 mb-4">
+                <li>• Final material topics</li>
+                <li>• Materiality matrix</li>
+                <li>• Process methodology</li>
+                <li>• GRI compliance checklist</li>
+              </ul>
+              <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
+                Download PDF
+              </Button>
+            </div>
+
+            {/* JSON Data */}
+            <div className="bg-purple-50 dark:bg-purple-950 rounded-xl p-6 border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
+                  <Database className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-purple-800 dark:text-purple-200">JSON Data</h3>
+                  <p className="text-sm text-purple-600 dark:text-purple-400">Raw data export</p>
+                </div>
               </div>
-            </Button>
+              <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1 mb-4">
+                <li>• Structured data format</li>
+                <li>• API integration ready</li>
+                <li>• All assessment data</li>
+                <li>• Custom processing</li>
+              </ul>
+              <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                Download JSON
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* GRI Compliance */}
+      {/* GRI Compliance Status - Cleaner Design */}
       <Card>
         <CardHeader>
           <CardTitle>GRI Compliance Status</CardTitle>
           <CardDescription>
-            Assessment against GRI Standards requirements
+            Assessment against GRI Standards requirements for materiality determination
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-3">
-                <h4 className="font-medium text-green-600">✓ Completed Requirements</h4>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>• Stakeholder identification and engagement</li>
-                  <li>• Material topic identification process</li>
-                  <li>• Impact assessment methodology</li>
-                  <li>• Materiality determination criteria</li>
-                </ul>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Completed Requirements */}
+            <div className="bg-green-50 dark:bg-green-950 rounded-xl p-6 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3 mb-4">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+                <h3 className="font-semibold text-green-800 dark:text-green-200">Completed Requirements</h3>
               </div>
-              
               <div className="space-y-3">
-                <h4 className="font-medium text-orange-600">⚠ Next Steps</h4>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>• Validate material topics with stakeholders</li>
-                  <li>• Complete GRI disclosure mapping</li>
-                  <li>• Develop management approach for each topic</li>
-                  <li>• Establish performance indicators and targets</li>
-                </ul>
+                {[
+                  'Stakeholder identification and engagement',
+                  'Material topic identification process',
+                  'Impact assessment methodology',
+                  'Materiality determination criteria',
+                  'Dual materiality perspective applied',
+                  'GRI disclosure mapping completed'
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    <span className="text-sm text-green-700 dark:text-green-300">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Next Steps */}
+            <div className="bg-orange-50 dark:bg-orange-950 rounded-xl p-6 border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center gap-3 mb-4">
+                <Clock className="h-6 w-6 text-orange-600" />
+                <h3 className="font-semibold text-orange-800 dark:text-orange-200">Recommended Next Steps</h3>
+              </div>
+              <div className="space-y-3">
+                {[
+                  'Validate material topics with stakeholders',
+                  'Develop management approach for each topic',
+                  'Establish performance indicators and targets',
+                  'Create disclosure timeline and responsibilities',
+                  'Implement monitoring and review processes',
+                  'Prepare for external assurance'
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                    <span className="text-sm text-orange-700 dark:text-orange-300">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -385,4 +513,27 @@ export default function ReportingDashboard() {
       </Card>
     </div>
   );
+}
+
+// Helper function to generate rationale text for topics
+function getTopicRationale(topicName: string, category: string): string {
+  const rationales: Record<string, string> = {
+    'GHG Emissions': 'High regulatory risk and stakeholder concern regarding climate impact and carbon footprint management.',
+    'Economic Performance': 'Core business performance metric with high impact on stakeholders and long-term sustainability.',
+    'Employee Health & Safety': 'Critical for operational continuity, regulatory compliance, and employee retention.',
+    'Data Privacy': 'Increasing regulatory requirements and stakeholder expectations for data protection.',
+    'Supply Chain Ethics': 'Growing stakeholder awareness and regulatory focus on ethical sourcing practices.',
+    'Water Management': 'Environmental stewardship concern with moderate stakeholder interest.',
+    'Cybersecurity Threats': 'High business risk with significant operational and reputational impact.',
+    'Supply Chain Disruption': 'Critical business continuity risk affecting operational resilience.',
+    'Regulatory Compliance': 'Essential for maintaining operating license and avoiding penalties.',
+    'Talent Retention': 'Key to maintaining competitive advantage and operational capability.',
+    'Climate Change Impact': 'Long-term physical risk requiring strategic planning and adaptation.',
+    'Renewable Energy Transition': 'Strategic priority for reducing environmental impact and meeting stakeholder expectations.',
+    'Employee Well-being & Diversity': 'Critical for talent attraction, retention, and organizational culture.',
+    'Circular Economy Practices': 'Emerging stakeholder expectation for sustainable resource management.',
+    'Ethical AI Development': 'Growing concern for responsible technology development and deployment.'
+  };
+  
+  return rationales[topicName] || `${category} topic with significant stakeholder interest and business impact.`;
 }

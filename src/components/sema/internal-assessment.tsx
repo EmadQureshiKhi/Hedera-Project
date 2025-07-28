@@ -457,58 +457,96 @@ export default function InternalAssessment() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-6 gap-2 text-xs">
-              {/* Header row */}
-              <div></div>
-              <div className="text-center font-medium">1</div>
-              <div className="text-center font-medium">2</div>
-              <div className="text-center font-medium">3</div>
-              <div className="text-center font-medium">4</div>
-              <div className="text-center font-medium">5</div>
-              
-              {/* Matrix rows */}
-              {[5, 4, 3, 2, 1].map((severity) => (
-                <React.Fragment key={severity}>
-                  <div className="flex items-center justify-center font-medium">{severity}</div>
-                  {[1, 2, 3, 4, 5].map((likelihood) => {
-                    const significance = severity * likelihood;
-                    const topicsInCell = internalTopics.filter(
-                      t => t.severity === severity && t.likelihood === likelihood
-                    );
-                    
-                    return (
-                      <div
-                        key={`${severity}-${likelihood}`}
-                        className={`aspect-square border rounded p-1 text-xs ${
-                          significance >= 15 ? 'bg-red-100 border-red-300' :
-                          significance >= 10 ? 'bg-yellow-100 border-yellow-300' :
-                          'bg-green-100 border-green-300'
-                        }`}
-                      >
-                        <div className="text-center font-bold">{significance}</div>
-                        {topicsInCell.map((topic, index) => (
-                          <div key={index} className="truncate" title={topic.name}>
-                            {topic.name.substring(0, 8)}...
-                          </div>
-                        ))}
+            <div className="space-y-6">
+              {/* Matrix Header */}
+              <div className="flex items-center gap-8 mb-4">
+                <div className="text-sm font-medium text-gray-600">Likelihood →</div>
+                <div className="flex gap-4">
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <div key={num} className="w-24 text-center text-sm font-medium text-gray-700">
+                      {num}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Matrix Grid */}
+              <div className="space-y-2">
+                {[5, 4, 3, 2, 1].map((severity) => (
+                  <div key={severity} className="flex items-center gap-8">
+                    {/* Severity Label */}
+                    <div className="flex items-center gap-2 w-16">
+                      {severity === 3 && (
+                        <div className="text-sm font-medium text-gray-600 -rotate-90 whitespace-nowrap">
+                          Severity ↓
+                        </div>
+                      )}
+                      <div className="text-sm font-medium text-gray-700 w-6 text-center">
+                        {severity}
                       </div>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </div>
-            <div className="mt-4 flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-100 border border-red-300 rounded"></div>
-                <span>High Risk (15-25)</span>
+                    </div>
+                    
+                    {/* Matrix Cells */}
+                    <div className="flex gap-4">
+                      {[1, 2, 3, 4, 5].map((likelihood) => {
+                        const significance = severity * likelihood;
+                        const topicsInCell = internalTopics.filter(
+                          t => t.severity === severity && t.likelihood === likelihood
+                        );
+                        
+                        // Determine cell color based on significance
+                        let cellColor = 'bg-gray-50 border-gray-200'; // Low risk (≤9)
+                        if (significance >= 20) {
+                          cellColor = 'bg-red-100 border-red-200'; // High risk (≥20)
+                        } else if (significance >= 15) {
+                          cellColor = 'bg-orange-100 border-orange-200'; // Medium-High risk (15-19)
+                        } else if (significance >= 10) {
+                          cellColor = 'bg-yellow-100 border-yellow-200'; // Medium risk (10-14)
+                        }
+                        
+                        return (
+                          <div
+                            key={`${severity}-${likelihood}`}
+                            className={`w-24 h-20 border-2 rounded-lg p-2 ${cellColor} flex flex-col items-center justify-center`}
+                          >
+                            <div className="text-lg font-bold text-gray-800 mb-1">
+                              {significance}
+                            </div>
+                            {topicsInCell.map((topic, index) => (
+                              <div 
+                                key={index} 
+                                className="text-xs text-gray-600 text-center leading-tight"
+                                title={topic.name}
+                              >
+                                {topic.name.length > 12 ? `${topic.name.substring(0, 12)}...` : topic.name}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div>
-                <span>Medium Risk (10-14)</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>
-                <span>Low Risk (1-9)</span>
+
+              {/* Legend */}
+              <div className="flex items-center justify-center gap-8 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-100 border-2 border-red-200 rounded"></div>
+                  <span className="text-sm font-medium">High Risk (≥20)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-100 border-2 border-orange-200 rounded"></div>
+                  <span className="text-sm font-medium">Medium-High (15-19)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-100 border-2 border-yellow-200 rounded"></div>
+                  <span className="text-sm font-medium">Medium (10-14)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-gray-50 border-2 border-gray-200 rounded"></div>
+                  <span className="text-sm font-medium">Low (≤9)</span>
+                </div>
               </div>
             </div>
           </CardContent>

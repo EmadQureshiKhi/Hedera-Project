@@ -166,7 +166,7 @@ export function SemaApp() {
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className="w-full justify-start mb-4"
               >
-                {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                {sidebarCollapsed ? <ChevronRight className="h-5 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 {!sidebarCollapsed && <span className="ml-2">Collapse</span>}
               </Button>
 
@@ -181,11 +181,14 @@ export function SemaApp() {
                       variant={isActive ? "default" : "ghost"}
                       className={cn(
                         "w-full justify-start h-auto p-3",
-                        sidebarCollapsed ? "px-3" : "px-4"
+                        sidebarCollapsed ? "px-3 justify-center h-14" : "px-4"
                       )}
                       onClick={() => setActiveModule(module.id)}
                     >
-                      <Icon className={cn("h-5 w-5", sidebarCollapsed ? "" : "mr-3")} />
+                      <Icon className={cn(
+                        "flex-shrink-0",
+                        sidebarCollapsed ? "h-4 w-4" : "h-5 w-5 mr-3"
+                      )} />
                       {!sidebarCollapsed && (
                         <div className="text-left">
                           <div className="font-medium">{module.name}</div>
