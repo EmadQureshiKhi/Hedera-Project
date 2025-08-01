@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { WalletProvider } from './wallet/wallet-provider';
+import { DataPersistenceProvider } from '@/contexts/DataPersistenceContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -10,7 +11,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <WalletProvider>
-        {children}
+        <DataPersistenceProvider>
+          {children}
+        </DataPersistenceProvider>
       </WalletProvider>
     </QueryClientProvider>
   );

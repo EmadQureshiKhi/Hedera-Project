@@ -5,7 +5,7 @@ import { Home, ArrowLeft, Leaf } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4">
       <Card className="w-full max-w-md text-center">
         <CardHeader className="space-y-4">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
