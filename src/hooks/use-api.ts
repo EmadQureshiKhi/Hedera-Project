@@ -1,32 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type { EmissionData, Certificate } from '@/lib/supabase';
-
-// Current user (demo)
-const DEMO_USER_ID = 'demo-user-1';
-const DEMO_WALLET = '0x1234567890abcdef1234567890abcdef12345678';
+import { useAuth } from '@/hooks/use-auth';
 
 // User hooks
 export function useUser() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['user', DEMO_WALLET],
-    queryFn: () => apiClient.getUser(DEMO_WALLET),
+    queryKey: ['user', user?.wallet_address],
+    queryFn: () => user?.wallet_address ? apiClient.getUser(user.wallet_address) : Promise.resolve(null),
+    enabled: !!user?.wallet_address,
   });
 }
 
 // Dashboard hooks
-export function useDashboardStats() {
+export function useDashboardStats(userId?: string) {
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
   return useQuery({
-    queryKey: ['dashboard-stats', DEMO_USER_ID],
-    queryFn: () => apiClient.getDashboardStats(DEMO_USER_ID),
+    queryKey: ['dashboard-stats', targetUserId],
+    queryFn: () => targetUserId ? apiClient.getDashboardStats(targetUserId) : Promise.resolve(null),
+    enabled: !!targetUserId,
   });
 }
 
 // Emissions hooks
-export function useUserEmissions() {
+export function useUserEmissions(userId?: string) {
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
   return useQuery({
-    queryKey: ['user-emissions', DEMO_USER_ID],
-    queryFn: () => apiClient.getUserEmissions(DEMO_USER_ID),
+    queryKey: ['user-emissions', targetUserId],
+    queryFn: () => targetUserId ? apiClient.getUserEmissions(targetUserId) : Promise.resolve([]),
+    enabled: !!targetUserId,
   });
 }
 
@@ -34,8 +41,8 @@ export function useSaveEmissionData() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: Partial<EmissionData>) => 
-      apiClient.saveEmissionData(DEMO_USER_ID, data),
+    mutationFn: ({ userId, data }: { userId: string; data: Partial<EmissionData> }) => 
+      apiClient.saveEmissionData(userId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-emissions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -44,10 +51,14 @@ export function useSaveEmissionData() {
 }
 
 // Certificate hooks
-export function useUserCertificates() {
+export function useUserCertificates(userId?: string) {
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
   return useQuery({
-    queryKey: ['user-certificates', DEMO_USER_ID],
-    queryFn: () => apiClient.getUserCertificates(DEMO_USER_ID),
+    queryKey: ['user-certificates', targetUserId],
+    queryFn: () => targetUserId ? apiClient.getUserCertificates(targetUserId) : Promise.resolve([]),
+    enabled: !!targetUserId,
   });
 }
 
@@ -59,15 +70,17 @@ export function useCertificate(certificateId: string) {
   });
 }
 
-export function useCreateCertificate() {
+export function useCreateCertificate(userId?: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
   
   return useMutation({
     mutationFn: ({ emissionDataId, certificateData }: { 
       emissionDataId: string; 
       certificateData: Partial<Certificate> 
     }) => 
-      apiClient.createCertificate(DEMO_USER_ID, emissionDataId, certificateData),
+      targetUserId ? apiClient.createCertificate(targetUserId, emissionDataId, certificateData) : Promise.reject(new Error('No user ID available')),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -84,15 +97,21 @@ export function useCarbonCredits() {
 }
 
 // Transaction hooks
-export function useUserTransactions() {
+export function useUserTransactions(userId?: string) {
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
   return useQuery({
-    queryKey: ['user-transactions', DEMO_USER_ID],
-    queryFn: () => apiClient.getUserTransactions(DEMO_USER_ID),
+    queryKey: ['user-transactions', targetUserId],
+    queryFn: () => targetUserId ? apiClient.getUserTransactions(targetUserId) : Promise.resolve([]),
+    enabled: !!targetUserId,
   });
 }
 
-export function useCreateTransaction() {
+export function useCreateTransaction(userId?: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
   
   return useMutation({
     mutationFn: ({ creditId, amount, totalPrice }: { 
@@ -100,7 +119,7 @@ export function useCreateTransaction() {
       amount: number; 
       totalPrice: number; 
     }) => 
-      apiClient.createTransaction(DEMO_USER_ID, creditId, amount, totalPrice),
+      targetUserId ? apiClient.createTransaction(targetUserId, creditId, amount, totalPrice) : Promise.reject(new Error('No user ID available')),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });

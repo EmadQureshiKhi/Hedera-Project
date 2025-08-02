@@ -1,11 +1,12 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 
 const fastify = Fastify({
   logger: true
 });
 
 // Enable CORS
-fastify.register(require('@fastify/cors'), {
+fastify.register(cors, {
   origin: ['http://localhost:3000', 'https://localhost:3000'],
   credentials: true
 });

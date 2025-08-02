@@ -28,6 +28,8 @@ interface UploadData {
     totalEmissions: number;
     breakdown: Record<string, number>;
   };
+  emissionDataId?: string;
+  emissionDataId?: string;
   certificate?: {
     id: string;
     hash: string;
@@ -67,8 +69,8 @@ export function UploadWizard() {
     handleNext();
   };
 
-  const handleCalculations = (calculations: any) => {
-    setUploadData(prev => ({ ...prev, calculations }));
+  const handleCalculations = (calculations: any, emissionDataId?: string) => {
+    setUploadData(prev => ({ ...prev, calculations, emissionDataId }));
     handleNext();
   };
 
@@ -158,6 +160,8 @@ export function UploadWizard() {
         {currentStep === 'certificate' && uploadData.calculations && (
           <CertificatePreview 
             calculations={uploadData.calculations}
+            emissionDataId={uploadData.emissionDataId}
+            emissionDataId={uploadData.emissionDataId}
             onGenerate={handleCertificateGeneration}
             onPrevious={handlePrevious}
           />

@@ -9,11 +9,13 @@ import { EmissionsChart } from './emissions-chart';
 import { RecentActivity } from './recent-activity';
 import { QuickActions } from './quick-actions';
 import { useDashboardStats } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { Leaf, TrendingDown, Award, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 
 export function Dashboard() {
-  const { data: dashboardData, isLoading } = useDashboardStats();
+  const { user } = useAuth();
+  const { data: dashboardData, isLoading } = useDashboardStats(user?.id);
 
   // Mock emissions data for chart
   const emissionsData = [
@@ -143,7 +145,7 @@ export function Dashboard() {
               </div>
               <Button className="w-full" size="sm">
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                Buy Offset Credits
+                Buy Carbon Credits
               </Button>
             </CardContent>
           </Card>

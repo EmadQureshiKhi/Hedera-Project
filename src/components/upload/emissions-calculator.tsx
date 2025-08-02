@@ -24,10 +24,12 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 import { EmissionsCalculator as EmissionsEngine, CalculationResult } from '@/lib/emissions-calculator';
+import { useSaveEmissionData } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 
 interface EmissionsCalculatorProps {
   data: any[];
-  onCalculate: (calculations: CalculationResult) => void;
+  onCalculate: (calculations: any, emissionDataId?: string) => void;
   onPrevious: () => void;
 }
 
@@ -36,6 +38,8 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
   const [progress, setProgress] = useState(0);
   const [calculations, setCalculations] = useState<CalculationResult | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Global');
+  const { user } = useAuth();
+  const saveEmissionData = useSaveEmissionData();
 
   const calculateEmissions = async () => {
     setIsCalculating(true);
@@ -65,6 +69,43 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
     setIsCalculating(false);
   };
 
+  const handleSaveAndContinue = async () => {
+    if (!calculations || !user) return;
+
+    setIsCalculating(true);
+    try {
+      // Save emission data to Supabase
+      const emissionDataResult = await saveEmissionData.mutateAsync({
+        userId: user.id,
+        data: {
+          file_name: 'uploaded_data.xlsx',
+          total_emissions: calculations.totalEmissions,
+          breakdown: calculations.categoryBreakdown,
+          raw_data: data,
+          processed_data: calculations.processedData,
+          status: 'completed'
+        }
+      });
+
+      console.log('✅ Emission data saved successfully:', emissionDataResult);
+      // Pass both calculations and emission data ID to the next step
+      onCalculate(calculations, emissionDataResult.id);
+    } catch (error) {
+      console.error('❌ Failed to save emission data:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = error.message as string;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      alert(`Failed to save emission data: ${errorMessage}. Please try again.`);
+      return; // Don't proceed to certificate generation
+    } finally {
+      setIsCalculating(false);
+    }
+  };
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'Energy':
@@ -505,9 +546,18 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
           Previous
         </Button>
         {calculations && !isCalculating && (
-          <Button onClick={() => onCalculate(calculations)}>
-            Generate Certificate
-            <ArrowRight className="h-4 w-4 ml-2" />
+          <Button onClick={handleSaveAndContinue} disabled={saveEmissionData.isPending}>
+            {saveEmissionData.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving Data...
+              </>
+            ) : (
+              <>
+                Generate Certificate
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </>
+            )}
           </Button>
         )}
       </div>

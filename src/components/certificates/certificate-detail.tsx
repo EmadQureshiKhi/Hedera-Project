@@ -17,6 +17,7 @@ import {
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useState } from 'react';
+import { getHashScanUrl } from '@/lib/hedera';
 
 interface CertificateDetailProps {
   certificateId: string;
@@ -177,10 +178,42 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                     <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
                       {certificate.blockchain_tx.substring(0, 16)}...
                     </code>
-                    <Button variant="ghost" size="sm">
-                      <ExternalLink className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(certificate.blockchain_tx!)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={getHashScanUrl(certificate.blockchain_tx)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </Button>
                   </div>
+                </div>
+              )}
+              {certificate.ipfs_cid && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">IPFS Metadata</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
+                      {certificate.ipfs_cid.substring(0, 16)}...
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(certificate.ipfs_cid!)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {certificate.hedera_nft_serial && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Hedera NFT Serial</label>
+                  <p className="font-medium">#{certificate.hedera_nft_serial}</p>
                 </div>
               )}
             </div>
@@ -218,10 +251,14 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
           <Share2 className="h-4 w-4 mr-2" />
           Share Certificate
         </Button>
-        <Button variant="outline">
-          <ExternalLink className="h-4 w-4 mr-2" />
-          View on Explorer
-        </Button>
+        {certificate.blockchain_tx && (
+          <Button variant="outline" asChild>
+            <a href={getHashScanUrl(certificate.blockchain_tx)} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View on HashScan
+            </a>
+          </Button>
+        )}
       </div>
 
       {copied && (

@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 import type { User, EmissionData, Certificate, CarbonCredit, Transaction } from './supabase';
 
-// Demo mode flag - set to false when using real Supabase
-const DEMO_MODE = false;
+// Demo mode flag - set to true for demo mode, false for real Supabase
+const DEMO_MODE = false; // Enable real Supabase integration
 
 class ApiClient {
   private demoData = {
@@ -15,7 +15,7 @@ class ApiClient {
         updated_at: new Date().toISOString(),
       }
     ],
-    emissions: [],
+    emissions: [] as any[],
     certificates: [
       {
         id: 'cert-1',
@@ -51,7 +51,7 @@ class ApiClient {
         created_at: new Date().toISOString(),
       }
     ],
-    transactions: []
+    transactions: [] as any[]
   };
 
   // Set wallet context for RLS
@@ -123,7 +123,7 @@ class ApiClient {
   // Emissions Data
   async saveEmissionData(userId: string, data: Partial<EmissionData>): Promise<EmissionData> {
     const emissionData: EmissionData = {
-      id: `emission-${Date.now()}`,
+      id: crypto.randomUUID(),
       user_id: userId,
       file_name: data.file_name || 'unknown.csv',
       total_emissions: data.total_emissions || 0,
@@ -180,10 +180,10 @@ class ApiClient {
   // Certificates
   async createCertificate(userId: string, emissionDataId: string, certificateData: Partial<Certificate>): Promise<Certificate> {
     const certificate: Certificate = {
-      id: `cert-${Date.now()}`,
+      id: crypto.randomUUID(),
       user_id: userId,
       emission_data_id: emissionDataId,
-      certificate_id: certificateData.certificate_id || `GHG-${Date.now()}`,
+      certificate_id: certificateData.certificate_id || `GHG-${crypto.randomUUID().substring(0, 8).toUpperCase()}`,
       title: certificateData.title || 'Emissions Certificate',
       total_emissions: certificateData.total_emissions || 0,
       breakdown: certificateData.breakdown || {},
@@ -303,7 +303,7 @@ class ApiClient {
   // Transactions
   async createTransaction(userId: string, creditId: string, amount: number, totalPrice: number): Promise<Transaction> {
     const transaction: Transaction = {
-      id: `tx-${Date.now()}`,
+      id: crypto.randomUUID(),
       user_id: userId,
       credit_id: creditId,
       amount,

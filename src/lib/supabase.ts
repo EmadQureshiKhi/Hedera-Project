@@ -40,6 +40,10 @@ export interface Certificate {
   issue_date: string;
   valid_until: string;
   blockchain_tx?: string;
+  ipfs_cid?: string;
+  hedera_nft_serial?: number;
+  hcs_topic_id?: string;
+  hcs_message_id?: string;
   data_hash: string;
   created_at: string;
 }
@@ -114,6 +118,10 @@ CREATE TABLE IF NOT EXISTS certificates (
   issue_date DATE NOT NULL,
   valid_until DATE NOT NULL,
   blockchain_tx TEXT,
+  ipfs_cid TEXT,
+  hedera_nft_serial INTEGER,
+  hcs_topic_id TEXT,
+  hcs_message_id TEXT,
   data_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

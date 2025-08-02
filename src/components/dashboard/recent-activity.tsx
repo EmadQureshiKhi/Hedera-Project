@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { getHashScanUrl } from '@/lib/hedera';
 
 interface ActivityItem {
   id: string;
@@ -160,7 +161,9 @@ export function RecentActivity({ data }: RecentActivityProps) {
                   </Badge>
                   {activity.txHash && (
                     <Button variant="ghost" size="sm">
-                      <ExternalLink className="h-4 w-4" />
+                      <a href={getHashScanUrl(activity.txHash)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </Button>
                   )}
                 </div>

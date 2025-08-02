@@ -49,7 +49,7 @@ export function Navbar() {
                 <Leaf className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="hidden font-bold sm:inline-block">
-                GHG Platform
+                Hedera GHG Platform
               </span>
             </Link>
 
