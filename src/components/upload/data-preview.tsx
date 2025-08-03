@@ -204,18 +204,6 @@ export function DataPreview({ data, fileName, onNext, onPrevious }: DataPreviewP
           )}
         </CardContent>
       </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        <Button onClick={onNext} disabled={validRows === 0}>
-          Continue to Calculate
-          <ArrowRight className="h-4 w-4 ml-2" />
-        </Button>
-      </div>
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { FileUpload } from './file-upload';
 import { DataPreview } from './data-preview';
 import { EmissionsCalculator } from './emissions-calculator';
 import { CertificatePreview } from './certificate-preview';
+import { useSaveEmissionData } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   Upload, 
   FileText, 
@@ -16,7 +18,8 @@ import {
   Award,
   CheckCircle,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 
 type Step = 'upload' | 'preview' | 'calculate' | 'certificate';
@@ -29,7 +32,6 @@ interface UploadData {
     breakdown: Record<string, number>;
   };
   emissionDataId?: string;
-  emissionDataId?: string;
   certificate?: {
     id: string;
     hash: string;
@@ -39,6 +41,9 @@ interface UploadData {
 export function UploadWizard() {
   const [currentStep, setCurrentStep] = useState<Step>('upload');
   const [uploadData, setUploadData] = useState<UploadData>({});
+  const [isSavingCalculations, setIsSavingCalculations] = useState(false);
+  const { user } = useAuth();
+  const saveEmissionData = useSaveEmissionData();
 
   const steps = [
     { id: 'upload', title: 'Upload File', icon: Upload },
@@ -70,8 +75,49 @@ export function UploadWizard() {
   };
 
   const handleCalculations = (calculations: any, emissionDataId?: string) => {
+    // Just store the calculations, don't navigate yet
     setUploadData(prev => ({ ...prev, calculations, emissionDataId }));
-    handleNext();
+  };
+
+  const handleCalculateNext = async () => {
+    if (!uploadData.calculations || !user) return;
+
+    setIsSavingCalculations(true);
+    try {
+      // Save emission data to Supabase
+      const emissionDataResult = await saveEmissionData.mutateAsync({
+        userId: user.id,
+        data: {
+          file_name: uploadData.file?.name || 'uploaded_data.xlsx',
+          total_emissions: uploadData.calculations.totalEmissions,
+          breakdown: uploadData.calculations.categoryBreakdown,
+          raw_data: uploadData.data || [],
+          processed_data: uploadData.calculations.processedData || [],
+          status: 'completed'
+        }
+      });
+
+      console.log('✅ Emission data saved successfully:', emissionDataResult);
+      
+      // Update uploadData with the emission data ID
+      setUploadData(prev => ({ ...prev, emissionDataId: emissionDataResult.id }));
+      
+      // Navigate to certificate generation
+      handleNext();
+    } catch (error) {
+      console.error('❌ Failed to save emission data:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = error.message as string;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      alert(`Failed to save emission data: ${errorMessage}. Please try again.`);
+    } finally {
+      setIsSavingCalculations(false);
+    }
   };
 
   const handleCertificateGeneration = (certificate: any) => {
@@ -161,7 +207,6 @@ export function UploadWizard() {
           <CertificatePreview 
             calculations={uploadData.calculations}
             emissionDataId={uploadData.emissionDataId}
-            emissionDataId={uploadData.emissionDataId}
             onGenerate={handleCertificateGeneration}
             onPrevious={handlePrevious}
           />
@@ -181,13 +226,23 @@ export function UploadWizard() {
         
         {currentStep !== 'certificate' && (
           <Button
-            onClick={handleNext}
+            onClick={currentStep === 'calculate' ? handleCalculateNext : handleNext}
             disabled={
               (currentStep === 'upload' && !uploadData.data) ||
-              (currentStep === 'calculate' && !uploadData.calculations)
+              (currentStep === 'preview' && !uploadData.data) ||
+              (currentStep === 'calculate' && (!uploadData.calculations || isSavingCalculations))
             }
           >
-            Next
+            {isSavingCalculations ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving Data...
+              </>
+            ) : currentStep === 'calculate' ? (
+              'Generate Certificate'
+            ) : (
+              'Next'
+            )}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         )}

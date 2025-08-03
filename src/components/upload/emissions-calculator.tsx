@@ -20,12 +20,11 @@ import {
   Info,
   TrendingUp,
   Target,
-  Lightbulb
+  Lightbulb,
+  Award
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 import { EmissionsCalculator as EmissionsEngine, CalculationResult } from '@/lib/emissions-calculator';
-import { useSaveEmissionData } from '@/hooks/use-api';
-import { useAuth } from '@/hooks/use-auth';
 
 interface EmissionsCalculatorProps {
   data: any[];
@@ -38,8 +37,6 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
   const [progress, setProgress] = useState(0);
   const [calculations, setCalculations] = useState<CalculationResult | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('Global');
-  const { user } = useAuth();
-  const saveEmissionData = useSaveEmissionData();
 
   const calculateEmissions = async () => {
     setIsCalculating(true);
@@ -66,44 +63,9 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
     const results = calculator.calculateEmissions(data);
     
     setCalculations(results);
+    // Pass calculations to parent immediately when ready
+    onCalculate(results);
     setIsCalculating(false);
-  };
-
-  const handleSaveAndContinue = async () => {
-    if (!calculations || !user) return;
-
-    setIsCalculating(true);
-    try {
-      // Save emission data to Supabase
-      const emissionDataResult = await saveEmissionData.mutateAsync({
-        data: {
-          file_name: 'uploaded_data.xlsx',
-          total_emissions: calculations.totalEmissions,
-          breakdown: calculations.categoryBreakdown,
-          raw_data: data,
-          processed_data: calculations.processedData,
-          status: 'completed'
-        }
-      });
-
-      console.log('✅ Emission data saved successfully:', emissionDataResult);
-      // Pass both calculations and emission data ID to the next step
-      onCalculate(calculations, emissionDataResult.id);
-    } catch (error) {
-      console.error('❌ Failed to save emission data:', error);
-      
-      let errorMessage = 'Unknown error occurred';
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = error.message as string;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      alert(`Failed to save emission data: ${errorMessage}. Please try again.`);
-      return; // Don't proceed to certificate generation
-    } finally {
-      setIsCalculating(false);
-    }
   };
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -292,11 +254,11 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
                     <div className="space-y-1">
                       <p className="font-medium">Recommendations:</p>
                       <ul className="text-sm space-y-1">
-                        {calculations.recommendations.slice(0, 2).map((rec, index) => (
+                        {calculations.recommendations.slice(0, 3).map((rec, index) => (
                           <li key={index}>• {rec}</li>
                         ))}
-                        {calculations.recommendations.length > 2 && (
-                          <li>• And {calculations.recommendations.length - 2} more suggestions...</li>
+                        {calculations.recommendations.length > 3 && (
+                          <li>• And {calculations.recommendations.length - 3} more recommendations...</li>
                         )}
                       </ul>
                     </div>
@@ -306,7 +268,6 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
             </div>
           )}
 
-          {/* Charts and Analysis */}
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -532,34 +493,12 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
               Emissions calculation completed successfully! Your total carbon footprint is{' '}
               <strong>{calculations.totalEmissions.toLocaleString()} kg CO₂e</strong> with{' '}
               <strong>{getConfidenceLabel(calculations.confidence).toLowerCase()} confidence</strong>.
-              Ready to generate your certificate?
+              Click "Generate Certificate\" below to proceed.
             </AlertDescription>
           </Alert>
+
         </>
       )}
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious} disabled={isCalculating}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        {calculations && !isCalculating && (
-          <Button onClick={handleSaveAndContinue} disabled={saveEmissionData.isPending}>
-            {saveEmissionData.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving Data...
-              </>
-            ) : (
-              <>
-                Generate Certificate
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            )}
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

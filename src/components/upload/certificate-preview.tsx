@@ -457,21 +457,6 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
         </CardContent>
       </Card>
 
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        {certificate && (
-          <Button asChild>
-            <a href="/certificates">
-              View All Certificates
-            </a>
-          </Button>
-        )}
-      </div>
-
       {copied && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg">
           Copied to clipboard!
