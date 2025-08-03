@@ -114,7 +114,7 @@ export function useCreateTransaction(userId?: string) {
   const targetUserId = userId || user?.id;
   
   return useMutation({
-    mutationFn: ({ creditId, amount, totalPrice }: { 
+    mutationFn: ({ creditId, amount, totalPrice }: {
       creditId: string; 
       amount: number; 
       totalPrice: number; 

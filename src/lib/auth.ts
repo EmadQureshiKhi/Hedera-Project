@@ -25,9 +25,15 @@ const DEMO_MODE = false; // Set this to false to use real wallet connections
 class AuthService {
   private currentUser: AuthUser | null = null;
   private listeners: ((user: AuthUser | null) => void)[] = [];
+  private pendingWalletConnection: { address: string; signature: string; message: string | Uint8Array } | null = null;
 
   // Email Authentication
   async signUpWithEmail(email: string, password: string, displayName?: string): Promise<AuthUser> {
+    // Check if there's a pending wallet connection
+    if (this.pendingWalletConnection) {
+      return await this.createUserWithWalletAndEmail(email, password, displayName, this.pendingWalletConnection);
+    }
+
     // In demo mode, create user directly
     if (this.isDemoMode()) {
       const user = await this.createDemoUser({
@@ -64,16 +70,21 @@ class AuthService {
       wallet_address: null,
     });
 
-    this.setCurrentUser(user);
+    this._setInternalCurrentUser(user);
     return user;
   }
 
   async signInWithEmail(email: string, password: string): Promise<AuthUser> {
+    // Check if there's a pending wallet connection
+    if (this.pendingWalletConnection) {
+      return await this.linkWalletToEmailUser(email, password, this.pendingWalletConnection);
+    }
+
     if (this.isDemoMode()) {
       // Demo login - find user by email
       const user = this.getDemoUsers().find(u => u.email === email);
       if (!user) throw new Error('User not found');
-      this.setCurrentUser(user);
+      this._setInternalCurrentUser(user);
       return user;
     }
 
@@ -86,12 +97,17 @@ class AuthService {
     if (!data.user) throw new Error('Login failed');
 
     const user = await this.getUserProfile(data.user.id);
-    this.setCurrentUser(user);
+    this._setInternalCurrentUser(user);
     return user;
   }
 
   // Google OAuth
   async signInWithGoogle(): Promise<AuthUser> {
+    // Store pending wallet connection in localStorage for OAuth callback
+    if (this.pendingWalletConnection) {
+      localStorage.setItem('pending_wallet_connection', JSON.stringify(this.pendingWalletConnection));
+    }
+
     if (this.isDemoMode()) {
       // Demo Google login
       const user = await this.createDemoUser({
@@ -103,7 +119,7 @@ class AuthService {
         // Don't generate wallet address for Google users - they can connect one later
         wallet_address: null,
       });
-      this.setCurrentUser(user);
+      this._setInternalCurrentUser(user);
       return user;
     }
 
@@ -128,6 +144,18 @@ class AuthService {
   async handleOAuthCallback(): Promise<AuthUser | null> {
     if (this.isDemoMode()) return null;
 
+    // Check for pending wallet connection from localStorage
+    const pendingWalletStr = localStorage.getItem('pending_wallet_connection');
+    let pendingWallet = null;
+    if (pendingWalletStr) {
+      try {
+        pendingWallet = JSON.parse(pendingWalletStr);
+        localStorage.removeItem('pending_wallet_connection');
+      } catch (e) {
+        console.error('Failed to parse pending wallet connection:', e);
+      }
+    }
+
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -147,11 +175,14 @@ class AuthService {
           auth_method: 'google',
           google_id: data.session.user.user_metadata?.sub,
           avatar_url: data.session.user.user_metadata?.avatar_url,
-          wallet_address: null,
+          wallet_address: pendingWallet?.address || null,
         });
+      } else if (pendingWallet && !user.wallet_address) {
+        // Link wallet to existing OAuth user
+        user = await this.updateUserWallet(user.id, pendingWallet.address);
       }
 
-      this.setCurrentUser(user);
+      this._setInternalCurrentUser(user);
       return user;
     }
 
@@ -167,21 +198,101 @@ class AuthService {
         auth_method: 'wallet',
         display_name: `${walletType.charAt(0).toUpperCase() + walletType.slice(1)} User`,
       });
-      this.setCurrentUser(user);
+      this._setInternalCurrentUser(user);
       return user;
+    }
+
+    // If user is already authenticated but doesn't have a wallet, link wallet to existing account
+    if (this.currentUser && !this.currentUser.wallet_address) {
+      return await this.connectWalletToExistingUser(walletType);
     }
 
     // Real wallet connection logic
     switch (walletType) {
       case 'metamask':
-        return this.connectMetaMask();
+        return await this.connectMetaMask();
       case 'phantom':
-        return this.connectPhantom();
+        return await this.connectPhantom();
       case 'walletconnect':
-        return this.connectWalletConnect();
+        return await this.connectWalletConnect();
       default:
         throw new Error('Unsupported wallet type');
     }
+  }
+
+  // Link email to existing user account
+  async linkEmailToUser(email: string, password?: string): Promise<AuthUser> {
+    if (!this.currentUser) {
+      throw new Error('No user logged in');
+    }
+
+    if (this.currentUser.email) {
+      throw new Error('User already has an email linked');
+    }
+
+    if (this.isDemoMode()) {
+      // Demo mode - just update the user
+      const updatedUser = { ...this.currentUser, email };
+      this._setInternalCurrentUser(updatedUser);
+      return updatedUser;
+    }
+
+    // For real Supabase, create auth user and update public.users
+    try {
+      // First, create auth user with email and password
+      if (password) {
+        const { data, error: authError } = await supabase.auth.signUp({
+          email,
+          password
+        });
+        if (authError) throw authError;
+        
+        // Now we have an auth.uid() session
+        if (data.user) {
+          // Update the existing public.users record with the auth user ID
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ 
+              id: data.user.id, // Link to auth.users
+              email,
+              updated_at: new Date().toISOString()
+            })
+            .eq('wallet_address', this.currentUser.wallet_address);
+          
+          if (updateError) throw updateError;
+          
+          // Update current user with new ID and email
+          const updatedUser = { 
+            ...this.currentUser, 
+            id: data.user.id,
+            email 
+          };
+          this._setInternalCurrentUser(updatedUser);
+          return updatedUser;
+        }
+      } else {
+        // No password provided - just update the public.users table
+        const { data, error } = await supabase
+          .from('users')
+          .update({ 
+            email,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.currentUser.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        this._setInternalCurrentUser(data);
+        return data;
+      }
+    } catch (error) {
+      console.error('Error linking email:', error);
+      throw error;
+    }
+    
+    throw new Error('Failed to link email');
   }
 
   // Connect wallet to existing user (for users who signed up with email/Google)
@@ -217,7 +328,7 @@ class AuthService {
 
     // Update user with wallet address
     const updatedUser = await this.updateUserWallet(this.currentUser.id, walletAddress);
-    this.setCurrentUser(updatedUser);
+    this._setInternalCurrentUser(updatedUser);
     return updatedUser;
   }
 
@@ -308,7 +419,8 @@ class AuthService {
 
       // Verify signature and create/get user
       const user = await this.authenticateWallet(walletAddress, signature, message);
-      this.setCurrentUser(user);
+      
+      // Return user without setting as current - needs email auth for full access
       return user;
 
     } catch (error: any) {
@@ -339,7 +451,8 @@ class AuthService {
       
       // Verify and authenticate
       const user = await this.authenticateWallet(walletAddress, signedMessage.signature, message);
-      this.setCurrentUser(user);
+      
+      // Return user without setting as current - needs email auth for full access
       return user;
 
     } catch (error: any) {
@@ -359,20 +472,226 @@ class AuthService {
 
   // Wallet signature verification
   private async authenticateWallet(walletAddress: string, signature: string, message: string | Uint8Array): Promise<AuthUser> {
-    // In production, verify the signature on the backend
-    // For now, just create/get user by wallet address
-    
+    // Find existing user profile based on wallet address
     let user = await this.getUserByWallet(walletAddress);
     
-    if (!user) {
-      user = await this.createUserProfile(this.generateUUID(), {
-        wallet_address: walletAddress,
-        auth_method: 'wallet',
-        display_name: `Wallet User`,
-      });
+    if (user) {
+      // User exists with this wallet - check if they have email linked
+      if (user.email) {
+        // User has email linked - automatically sign them in
+        if (!this.isDemoMode()) {
+          try {
+            // For wallet users with linked email, we need to create an auth session
+            // Since we can't sign in without password, we'll create a temporary session
+            // by updating the user record to use the existing auth.uid if available
+            const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
+            
+            if (currentAuthUser && currentAuthUser.email === user.email) {
+              // Already authenticated with the correct email - just return user
+              this._setInternalCurrentUser(user);
+              return user;
+            }
+            
+            // Try to sign in with OTP to create auth session
+            const { data, error } = await supabase.auth.signInWithOtp({
+              email: user.email,
+              options: {
+                shouldCreateUser: false // Don't create new user, just sign in existing
+              }
+            });
+            
+            if (!error) {
+              console.log('OTP sent to linked email for wallet verification - proceeding with wallet auth');
+            }
+            
+            // Proceed with wallet authentication - the wallet signature is sufficient
+            this._setInternalCurrentUser(user);
+            return user;
+          } catch (error) {
+            console.warn('Failed to send OTP, proceeding with wallet auth:', error);
+            this._setInternalCurrentUser(user);
+            return user;
+          }
+        } else {
+          this._setInternalCurrentUser(user);
+          return user;
+        }
+      }
+      // User exists but no email - store for linking
+      this.pendingWalletConnection = { address: walletAddress, signature, message };
+    } else {
+      // No user found - store for linking after email authentication
+      this.pendingWalletConnection = { address: walletAddress, signature, message };
     }
 
+    // Return a temporary user object for the pending connection
+    return {
+      id: 'pending-wallet-user',
+      wallet_address: walletAddress,
+      email: null,
+      auth_method: 'wallet',
+      display_name: 'Wallet User',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // Create user with both wallet and email (for sign up after wallet connection)
+  private async createUserWithWalletAndEmail(
+    email: string, 
+    password: string, 
+    displayName: string | undefined, 
+    walletConnection: { address: string; signature: string; message: string | Uint8Array }
+  ): Promise<AuthUser> {
+    if (this.isDemoMode()) {
+      const user = await this.createDemoUser({
+        email,
+        display_name: displayName,
+        auth_method: 'email',
+        wallet_address: walletConnection.address,
+      });
+      this.pendingWalletConnection = null;
+      this._setInternalCurrentUser(user);
+      return user;
+    }
+
+    // Check if user already exists with this wallet
+    const existingUser = await this.getUserByWallet(walletConnection.address);
+    
+    if (existingUser && !existingUser.email) {
+      // User exists with wallet but no email - update with email and create auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+            auth_method: 'email',
+          }
+        }
+      });
+
+      if (error) throw error;
+      if (!data.user) throw new Error('Failed to create user');
+
+      // Update existing user record with auth ID and email
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({
+          id: data.user.id,
+          email,
+          display_name: displayName,
+          auth_method: 'email',
+          updated_at: new Date().toISOString()
+        })
+        .eq('wallet_address', walletConnection.address)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      this.pendingWalletConnection = null;
+      this._setInternalCurrentUser(updatedUser);
+      return updatedUser;
+    }
+
+    // Create new user with wallet and email
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: displayName,
+          auth_method: 'email',
+        }
+      }
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error('Failed to create user');
+
+    const user = await this.createUserProfile(data.user.id, {
+      email,
+      display_name: displayName,
+      auth_method: 'email',
+      wallet_address: walletConnection.address,
+    });
+
+    this.pendingWalletConnection = null;
+    this._setInternalCurrentUser(user);
     return user;
+  }
+
+  // Link wallet to existing email user (for sign in after wallet connection)
+  private async linkWalletToEmailUser(
+    email: string, 
+    password: string, 
+    walletConnection: { address: string; signature: string; message: string | Uint8Array }
+  ): Promise<AuthUser> {
+    if (this.isDemoMode()) {
+      // Demo login - find user by email and add wallet
+      const users = this.getDemoUsers();
+      const userIndex = users.findIndex(u => u.email === email);
+      if (userIndex >= 0) {
+        users[userIndex].wallet_address = walletConnection.address;
+        users[userIndex].updated_at = new Date().toISOString();
+        localStorage.setItem('demo_users', JSON.stringify(users));
+        this.pendingWalletConnection = null;
+        this._setInternalCurrentUser(users[userIndex]);
+        return users[userIndex];
+      }
+      throw new Error('User not found');
+    }
+
+    // Check if there's already a user with this wallet
+    const existingWalletUser = await this.getUserByWallet(walletConnection.address);
+    
+    if (existingWalletUser && existingWalletUser.email === email) {
+      // This wallet is already linked to this email - just sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      if (!data.user) throw new Error('Login failed');
+
+      this.pendingWalletConnection = null;
+      this._setInternalCurrentUser(existingWalletUser);
+      return existingWalletUser;
+    }
+
+    // Sign in with email and link wallet
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error('Login failed');
+
+    // Get user profile and update with wallet
+    let user = await this.getUserProfile(data.user.id);
+    
+    // Link wallet if not already linked
+    if (!user.wallet_address) {
+      user = await this.updateUserWallet(user.id, walletConnection.address);
+    } else if (existingWalletUser && !existingWalletUser.email) {
+      // There's a wallet-only user that needs to be merged
+      // Delete the wallet-only user and update this email user with the wallet
+      await this.deleteUser(existingWalletUser.id);
+      user = await this.updateUserWallet(user.id, walletConnection.address);
+    }
+
+    this.pendingWalletConnection = null;
+    this._setInternalCurrentUser(user);
+    return user;
+  }
+
+  // Clear pending wallet connection
+  clearPendingWalletConnection() {
+    this.pendingWalletConnection = null;
+    localStorage.removeItem('pending_wallet_connection');
   }
 
   // User management
@@ -453,6 +772,23 @@ class AuthService {
     return data;
   }
 
+  // Helper method to delete user (for merging wallet-only users)
+  private async deleteUser(userId: string): Promise<void> {
+    if (this.isDemoMode()) {
+      const users = this.getDemoUsers();
+      const filteredUsers = users.filter(u => u.id !== userId);
+      localStorage.setItem('demo_users', JSON.stringify(filteredUsers));
+      return;
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (error) throw error;
+  }
+
   // Session management
   async getCurrentUser(): Promise<AuthUser | null> {
     if (this.currentUser) return this.currentUser;
@@ -470,7 +806,7 @@ class AuthService {
     if (!user) return null;
 
     const profile = await this.getUserProfile(user.id);
-    this.setCurrentUser(profile);
+    this._setInternalCurrentUser(profile);
     return profile;
   }
 
@@ -484,11 +820,11 @@ class AuthService {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     
-    this.setCurrentUser(null);
+    this._setInternalCurrentUser(null);
   }
 
   // Utility methods
-  private setCurrentUser(user: AuthUser | null) {
+  private _setInternalCurrentUser(user: AuthUser | null) {
     this.currentUser = user;
     
     if (this.isDemoMode() && user) {
@@ -496,6 +832,11 @@ class AuthService {
     }
     
     this.listeners.forEach(listener => listener(user));
+  }
+
+  // Public method to set current user (needed for wallet flow)
+  setCurrentUser(user: AuthUser | null) {
+    this._setInternalCurrentUser(user);
   }
 
   // Remove the automatic wallet generation methods

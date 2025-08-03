@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authService, AuthUser, AuthMethod } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -70,7 +71,27 @@ export function useAuth() {
   const connectWallet = async (walletType: 'metamask' | 'phantom' | 'walletconnect') => {
     setIsLoading(true);
     try {
-      const user = await authService.connectWallet(walletType);
+      const walletUser = await authService.connectWallet(walletType);
+      
+      // Check if this is a complete user (has email and is signed in)
+      if (walletUser.email) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        // If wallet has email, user should be automatically signed in
+        // No need to check auth session for wallet users with linked email
+        return walletUser;
+      }
+      
+      // No email linked - return wallet user for email linking flow
+      return walletUser;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const linkEmailToUser = async (email: string, password?: string) => {
+    setIsLoading(true);
+    try {
+      const user = await authService.linkEmailToUser(email, password);
       return user;
     } finally {
       setIsLoading(false);
@@ -94,6 +115,7 @@ export function useAuth() {
     signInWithEmail,
     signInWithGoogle,
     connectWallet,
+    linkEmailToUser,
     signOut,
   };
 }

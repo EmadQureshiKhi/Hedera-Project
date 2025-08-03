@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCreateCertificate } from '@/hooks/use-api';
+import { supabase } from '@/lib/supabase';
 import { 
   Award, 
   Download, 
@@ -27,6 +28,7 @@ import {
   isHederaConfigured 
 } from '@/lib/hedera';
 import { useAuth } from '@/hooks/use-auth';
+import { useEffect } from 'react';
 
 interface CertificatePreviewProps {
   calculations: any;
@@ -50,6 +52,9 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
   
   // Check if we have a valid emission data ID
   const hasValidEmissionDataId = emissionDataId && emissionDataId !== 'temp-emission-id' && emissionDataId.length > 10;
+  
+  // Check if user has email linked
+  const hasEmailLinked = user?.email && user.email.trim().length > 0;
   
   const createCertificate = useCreateCertificate(user?.id);
 
@@ -351,6 +356,18 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
           {/* Generation Button */}
           {!certificate && (
             <div className="text-center">
+              {!hasEmailLinked && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p className="font-medium">Email Authentication Required</p>
+                      <p>
+                        Certificates can only be generated for users with a linked email address. Please link an email to your account to continue.
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
               {!hasValidEmissionDataId && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertDescription>
@@ -361,7 +378,7 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
               <Button
                 size="lg"
                 onClick={generateCertificate}
-                disabled={isGenerating || createCertificate.isPending || !hasValidEmissionDataId}
+                disabled={isGenerating || createCertificate.isPending || !hasValidEmissionDataId || !hasEmailLinked}
                 className="bg-green-600 hover:bg-green-700"
               >
                 {isGenerating || createCertificate.isPending ? (
@@ -377,9 +394,11 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
                 )}
               </Button>
               <p className="text-sm text-muted-foreground mt-2">
-                {hasValidEmissionDataId 
-                  ? 'This will create a blockchain-verified certificate on Hedera Hashgraph'
-                  : 'Please ensure emission data is saved before generating certificate'
+                {!hasEmailLinked
+                  ? 'Please link an email to generate certificates'
+                  : hasValidEmissionDataId 
+                    ? 'This will create a blockchain-verified certificate on Hedera Hashgraph'
+                    : 'Please ensure emission data is saved before generating certificate'
                 }
               </p>
             </div>

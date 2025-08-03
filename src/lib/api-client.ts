@@ -120,11 +120,60 @@ class ApiClient {
     return data;
   }
 
+  // Helper method to get user profile by ID
+  private async getUserProfileById(userId: string): Promise<any> {
+    if (DEMO_MODE) {
+      return this.demoData.users.find(u => u.id === userId) || null;
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
   // Emissions Data
   async saveEmissionData(userId: string, data: Partial<EmissionData>): Promise<EmissionData> {
+    if (DEMO_MODE) {
+      const emissionData: EmissionData = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        file_name: data.file_name || 'unknown.csv',
+        total_emissions: data.total_emissions || 0,
+        breakdown: data.breakdown || {},
+        raw_data: data.raw_data || [],
+        processed_data: data.processed_data || [],
+        status: 'completed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.demoData.emissions.push(emissionData);
+      return emissionData;
+    }
+
+    // For wallet users, we need to ensure they have a proper auth session
+    // Try to get the authenticated user, but also allow wallet-based operations
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    
+    // Use the authenticated user ID if available, otherwise use the provided userId
+    const effectiveUserId = authUser?.id || userId;
+    
+    // If we have an authUser, use their ID; otherwise, we'll rely on wallet context
+    if (!authUser && userId) {
+      // For wallet users without auth session, set wallet context
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
+    }
+
     const emissionData: EmissionData = {
       id: crypto.randomUUID(),
-      user_id: userId,
+      user_id: effectiveUserId,
       file_name: data.file_name || 'unknown.csv',
       total_emissions: data.total_emissions || 0,
       breakdown: data.breakdown || {},
@@ -134,17 +183,6 @@ class ApiClient {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    if (DEMO_MODE) {
-      this.demoData.emissions.push(emissionData);
-      return emissionData;
-    }
-
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
-    }
 
     const { data: result, error } = await supabase
       .from('emission_data')
@@ -161,16 +199,22 @@ class ApiClient {
       return this.demoData.emissions.filter(e => e.user_id === userId);
     }
 
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
+    // Handle authentication for both email and wallet users
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const effectiveUserId = authUser?.id || userId;
+    
+    // For wallet users without auth session, set wallet context
+    if (!authUser && userId) {
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
     }
 
     const { data, error } = await supabase
       .from('emission_data')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', effectiveUserId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -200,10 +244,19 @@ class ApiClient {
       return certificate;
     }
 
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
+    // Handle authentication for both email and wallet users
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const effectiveUserId = authUser?.id || userId;
+    
+    // Update certificate with effective user ID
+    certificate.user_id = effectiveUserId;
+    
+    // For wallet users without auth session, set wallet context
+    if (!authUser && userId) {
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
     }
 
     const { data, error } = await supabase
@@ -221,16 +274,22 @@ class ApiClient {
       return this.demoData.certificates.filter(c => c.user_id === userId);
     }
 
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
+    // Handle authentication for both email and wallet users
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const effectiveUserId = authUser?.id || userId;
+    
+    // For wallet users without auth session, set wallet context
+    if (!authUser && userId) {
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
     }
 
     const { data, error } = await supabase
       .from('certificates')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', effectiveUserId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -302,9 +361,13 @@ class ApiClient {
 
   // Transactions
   async createTransaction(userId: string, creditId: string, amount: number, totalPrice: number): Promise<Transaction> {
+    // Handle authentication for both email and wallet users
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const effectiveUserId = authUser?.id || userId;
+    
     const transaction: Transaction = {
       id: crypto.randomUUID(),
-      user_id: userId,
+      user_id: effectiveUserId,
       credit_id: creditId,
       amount,
       total_price: totalPrice,
@@ -318,10 +381,12 @@ class ApiClient {
       return transaction;
     }
 
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
+    // For wallet users without auth session, set wallet context
+    if (!authUser && userId) {
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
     }
 
     const { data, error } = await supabase
@@ -339,16 +404,22 @@ class ApiClient {
       return this.demoData.transactions.filter(t => t.user_id === userId);
     }
 
-    // Get user's wallet address for context
-    const user = await supabase.from('users').select('wallet_address').eq('id', userId).single();
-    if (user.data) {
-      await this.setWalletContext(user.data.wallet_address);
+    // Handle authentication for both email and wallet users
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const effectiveUserId = authUser?.id || userId;
+    
+    // For wallet users without auth session, set wallet context
+    if (!authUser && userId) {
+      const userProfile = await this.getUserProfileById(userId);
+      if (userProfile?.wallet_address) {
+        await this.setWalletContext(userProfile.wallet_address);
+      }
     }
 
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', effectiveUserId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

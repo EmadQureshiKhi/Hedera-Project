@@ -76,7 +76,6 @@ export function EmissionsCalculator({ data, onCalculate, onPrevious }: Emissions
     try {
       // Save emission data to Supabase
       const emissionDataResult = await saveEmissionData.mutateAsync({
-        userId: user.id,
         data: {
           file_name: 'uploaded_data.xlsx',
           total_emissions: calculations.totalEmissions,

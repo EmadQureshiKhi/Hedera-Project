@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { AuthModal } from './auth-modal';
 import { useAuth } from '@/hooks/use-auth';
 import { 
   User, 
@@ -21,12 +22,15 @@ import {
   ChevronDown,
   Settings,
   CreditCard,
-  Plus
+  Plus,
+  Mail
 } from 'lucide-react';
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup' | 'wallet' | 'link-email'>('wallet');
 
   if (!user) return null;
 
@@ -36,6 +40,16 @@ export function UserMenu() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleConnectWallet = () => {
+    setAuthModalTab('wallet');
+    setShowAuthModal(true);
+  };
+
+  const handleLinkEmail = () => {
+    setAuthModalTab('link-email');
+    setShowAuthModal(true);
   };
 
   const getInitials = (name?: string) => {
@@ -136,6 +150,7 @@ export function UserMenu() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={handleConnectWallet}
                   className="h-6 px-2 text-xs"
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -149,6 +164,34 @@ export function UserMenu() {
               ) : (
                 'No wallet connected'
               )}
+            </p>
+          </div>
+          
+          {/* Email Section */}
+          <div className="px-2 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">Email</span>
+              </div>
+              {user.email ? (
+                <Badge variant="outline" className="text-xs">
+                  Linked
+                </Badge>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLinkEmail}
+                  className="h-6 px-2 text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Link
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {user.email || 'No email linked'}
             </p>
           </div>
           
@@ -185,6 +228,13 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Auth Modal for connecting wallet or linking email */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        defaultTab={authModalTab}
+      />
 
       {copied && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">

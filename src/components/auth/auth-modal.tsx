@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth, useWalletAvailability } from '@/hooks/use-auth';
+import { supabase } from '@/lib/supabase';
 import { 
   Mail, 
   Lock, 
@@ -43,9 +44,17 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
     displayName: '',
   });
 
-  const { signUpWithEmail, signInWithEmail, signInWithGoogle, connectWallet, isLoading } = useAuth();
+  const { user, signUpWithEmail, signInWithEmail, signInWithGoogle, connectWallet, linkEmailToUser, isLoading } = useAuth();
   const wallets = useWalletAvailability();
 
+  // If defaultTab is 'link-email', we want to show only that interface
+  const showOnlyLinkEmail = defaultTab === 'link-email';
+
+  // Format wallet address for display
+  const formatWalletAddress = (address: string | null) => {
+    if (!address) return 'Wallet User';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
   const handleEmailAuth = async (isSignUp: boolean) => {
     setError(null);
     
@@ -78,11 +87,47 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
     setError(null);
     
     try {
-      await connectWallet(walletType);
-      onClose();
+      const walletUser = await connectWallet(walletType);
+      
+      // Check if this is a complete user account (wallet + email)
+      if (walletUser.email) {
+        // Wallet is linked to email and user is signed in - close modal
+        onClose();
+        return;
+      }
+      
+      // No email linked - need email authentication
+      setError(`Wallet ${walletUser.wallet_address?.substring(0, 6)}...${walletUser.wallet_address?.substring(walletUser.wallet_address.length - 4)} connected! Please sign in or sign up with email to complete authentication.`);
+      setActiveTab('signin');
     } catch (err: any) {
       setError(err.message || 'Wallet connection failed');
     }
+  };
+
+  const handleLinkEmail = async () => {
+    setError(null);
+    
+    if (!formData.email) {
+      setError('Email is required');
+      return;
+    }
+
+    try {
+      await linkEmailToUser(formData.email, formData.password || undefined);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Failed to link email');
+    }
+  };
+
+  const handleCloseModal = () => {
+    // Clear any pending wallet connections when modal is closed
+    if (typeof window !== 'undefined') {
+      const authService = require('@/lib/auth').authService;
+      authService.clearPendingWalletConnection();
+    }
+    resetForm();
+    onClose();
   };
 
   const resetForm = () => {
@@ -91,24 +136,123 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleCloseModal}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Welcome to GHG Platform</DialogTitle>
-          <DialogDescription>
-            Sign in to track your carbon emissions and generate certificates
-          </DialogDescription>
-        </DialogHeader>
+        {!showOnlyLinkEmail && (
+          <DialogHeader>
+            <DialogTitle>Welcome to GHG Platform</DialogTitle>
+            <DialogDescription>
+              Sign in to track your carbon emissions and generate certificates
+            </DialogDescription>
+          </DialogHeader>
+        )}
 
-        <Tabs value={activeTab} onValueChange={(value) => {
-          setActiveTab(value as any);
-          resetForm();
-        }}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            <TabsTrigger value="wallet">Wallet</TabsTrigger>
-          </TabsList>
+        {showOnlyLinkEmail && (
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Link Email to Your Account
+            </DialogTitle>
+            <DialogDescription>
+              Currently signed in as: {formatWalletAddress(user?.wallet_address)}
+            </DialogDescription>
+          </DialogHeader>
+        )}
+
+        {showOnlyLinkEmail ? (
+          // Show only the link email interface
+          <div className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="link-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link-password">Password (Optional)</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create a password (optional)"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="pl-10 pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adding a password allows you to sign in with email in the future
+                </p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Why link an email?</h4>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <li>• Required for certificate generation</li>
+                  <li>• Secure account recovery options</li>
+                  <li>• Important notifications and updates</li>
+                  <li>• Enhanced platform security</li>
+                </ul>
+              </div>
+
+              <Button 
+                onClick={handleLinkEmail} 
+                className="w-full"
+                disabled={isLoading || !formData.email}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking Email...
+                  </>
+                ) : (
+                  'Link Email Address'
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value as any);
+            resetForm();
+          }}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="wallet">Wallet</TabsTrigger>
+            </TabsList>
 
           {error && (
             <Alert variant="destructive">
@@ -119,6 +263,19 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
 
           {/* Email Sign In */}
           <TabsContent value="signin" className="space-y-4">
+            {error && error.includes('Wallet') && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">Wallet Connection Pending</p>
+                    <p className="text-sm">
+                      Your wallet is ready to be linked. Sign in with your existing email account or create a new one to complete the connection.
+                    </p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signin-email">Email</Label>
@@ -201,6 +358,19 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
 
           {/* Email Sign Up */}
           <TabsContent value="signup" className="space-y-4">
+            {error && error.includes('Wallet') && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">Wallet Connection Pending</p>
+                    <p className="text-sm">
+                      Your wallet is ready to be linked. Create a new account and your wallet will be automatically connected.
+                    </p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Display Name</Label>
@@ -370,7 +540,171 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
               </div>
             </div>
           </TabsContent>
+
+          {/* Link Email Tab */}
+          <TabsContent value="link-email" className="space-y-4">
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <Mail className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  Link Email to Your Account
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Currently signed in as: {user?.display_name || 'Wallet User'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link-password">Password (Optional)</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create a password (optional)"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="pl-10 pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adding a password allows you to sign in with email in the future
+                </p>
+              </div>
+
+              <Button 
+                onClick={handleLinkEmail} 
+                className="w-full"
+                disabled={isLoading || !formData.email}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking Email...
+                  </>
+                ) : (
+                  'Link Email Address'
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Link Email Tab */}
+          <TabsContent value="link-email" className="space-y-4">
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <Mail className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  Link Email to Your Account
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Currently signed in as: {user?.display_name || 'Wallet User'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link-password">Password (Optional)</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="link-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create a password (optional)"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="pl-10 pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adding a password allows you to sign in with email in the future
+                </p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Why link an email?</h4>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <li>• Secure account recovery options</li>
+                  <li>• Important notifications and updates</li>
+                  <li>• Enhanced platform security</li>
+                  <li>• Access to all platform features</li>
+                </ul>
+              </div>
+
+              <Button 
+                onClick={handleLinkEmail} 
+                className="w-full"
+                disabled={isLoading || !formData.email}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking Email...
+                  </>
+                ) : (
+                  'Link Email Address'
+                )}
+              </Button>
+            </div>
+          </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );
