@@ -4,6 +4,29 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 
+// Export SemaModule type for use in other components
+export type SemaModule = 
+  | 'dashboard' 
+  | 'stakeholders' 
+  | 'sample-size' 
+  | 'questionnaire' 
+  | 'internal-assessment' 
+  | 'materiality-matrix' 
+  | 'reporting' 
+  | 'admin';
+
+// Demo client that's always available
+const DEMO_CLIENT: SemaClient = {
+  id: 'demo-client',
+  name: 'Demo Organization',
+  description: 'Complete SEMA demonstration with sample data',
+  industry: 'Technology',
+  size: 'Medium',
+  status: 'demo',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
 export interface SemaClient {
   id: string;
   name: string;
@@ -122,11 +145,25 @@ interface SemaContextType {
   refreshData: () => Promise<void>;
   reloadClients: () => Promise<void>;
   isLoading: boolean;
+  
+  // Navigation and form control
+  setActiveSemaModule: (module: SemaModule) => void;
+  setOpenAdminClientForm: (isOpen: boolean) => void;
 }
 
 const SemaContext = createContext<SemaContextType | undefined>(undefined);
 
-export function SemaProvider({ children }: { children: ReactNode }) {
+interface SemaProviderProps {
+  children: ReactNode;
+  setActiveSemaModule: (module: SemaModule) => void;
+  setOpenAdminClientForm: (isOpen: boolean) => void;
+}
+
+export function SemaProvider({ 
+  children, 
+  setActiveSemaModule, 
+  setOpenAdminClientForm 
+}: SemaProviderProps) {
   const { user } = useAuth();
   const [clients, setClients] = useState<SemaClient[]>([]);
   const [activeClient, setActiveClient] = useState<SemaClient | null>(null);
@@ -610,8 +647,13 @@ export function SemaProvider({ children }: { children: ReactNode }) {
 
   // Load clients on mount
   useEffect(() => {
+    // Always load clients (demo client will be available even without user)
     if (user) {
       loadClients();
+    } else {
+      // No user logged in, just show demo client
+      setClients([DEMO_CLIENT]);
+      setActiveClient(DEMO_CLIENT);
     }
   }, [user]);
 
@@ -645,15 +687,27 @@ export function SemaProvider({ children }: { children: ReactNode }) {
 
       console.log('Loaded clients:', data);
 
-      setClients(data || []);
+      // Always include demo client in the list
+      const allClients = [DEMO_CLIENT, ...(data || [])];
+      setClients(allClients);
       
-      // Set demo client as active if no active client
-      if (!activeClient && data?.length > 0) {
-        const demoClient = data.find(c => c.status === 'demo') || data[0];
-        setActiveClient(demoClient);
+      // Set active client priority: current active > first user client > demo client
+      if (!activeClient) {
+        if (data && data.length > 0) {
+          // User has clients, set first user client as active
+          setActiveClient(data[0]);
+        } else {
+          // No user clients, set demo as active
+          setActiveClient(DEMO_CLIENT);
+        }
       }
     } catch (error) {
       console.error('Error loading SEMA clients:', error);
+      // On error, still provide demo client
+      setClients([DEMO_CLIENT]);
+      if (!activeClient) {
+        setActiveClient(DEMO_CLIENT);
+      }
     }
   };
 
@@ -690,10 +744,12 @@ export function SemaProvider({ children }: { children: ReactNode }) {
       throw new Error(`Database error: ${error.message}`);
     }
 
-    setClients(prev => [data, ...prev]);
+    // Add new client after demo client
+    setClients(prev => [DEMO_CLIENT, data, ...prev.filter(c => c.id !== 'demo-client')]);
     
-    // Set as active client if it's the first one
-    if (clients.length === 0) {
+    // Set as active client if it's the first user client
+    const userClients = clients.filter(c => c.status !== 'demo');
+    if (userClients.length === 0) {
       setActiveClient(data);
     }
     
@@ -785,7 +841,9 @@ export function SemaProvider({ children }: { children: ReactNode }) {
       reports,
       refreshData,
       reloadClients,
-      isLoading
+      isLoading,
+      setActiveSemaModule,
+      setOpenAdminClientForm
     }}>
       {children}
     </SemaContext.Provider>

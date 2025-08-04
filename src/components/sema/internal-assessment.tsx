@@ -478,7 +478,7 @@ export default function InternalAssessment() {
                     <div className="flex items-center gap-2 w-16">
                       {severity === 3 && (
                         <div className="text-sm font-medium text-gray-600 -rotate-90 whitespace-nowrap">
-                          Severity ↓
+                          Severity →
                         </div>
                       )}
                       <div className="text-sm font-medium text-gray-700 w-6 text-center">

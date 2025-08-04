@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SemaClientSelector } from './sema-client-selector';
-import { SemaProvider } from './sema-context';
+import { SemaProvider, SemaModule } from './sema-context';
 import { 
   BarChart3, 
   Users, 
@@ -32,16 +32,6 @@ const ReportingDashboard = lazy(() => import('./reporting-dashboard'));
 const SemaAdminPanel = lazy(() => import('./sema-admin-panel'));
 
 import { lazy } from 'react';
-
-type SemaModule = 
-  | 'dashboard' 
-  | 'stakeholders' 
-  | 'sample-size' 
-  | 'questionnaire' 
-  | 'internal-assessment' 
-  | 'materiality-matrix' 
-  | 'reporting' 
-  | 'admin';
 
 const modules = [
   {
@@ -97,6 +87,7 @@ const modules = [
 export function SemaApp() {
   const [activeModule, setActiveModule] = useState<SemaModule>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openAdminClientForm, setOpenAdminClientForm] = useState(false);
 
   const renderActiveModule = () => {
     switch (activeModule) {
@@ -115,7 +106,10 @@ export function SemaApp() {
       case 'reporting':
         return <ReportingDashboard />;
       case 'admin':
-        return <SemaAdminPanel />;
+        return <SemaAdminPanel 
+          isOpenClientForm={openAdminClientForm}
+          setIsOpenClientForm={setOpenAdminClientForm}
+        />;
       default:
         return <SemaDashboard />;
     }
@@ -124,7 +118,10 @@ export function SemaApp() {
   const activeModuleData = modules.find(m => m.id === activeModule);
 
   return (
-    <SemaProvider>
+    <SemaProvider
+      setActiveSemaModule={setActiveModule}
+      setOpenAdminClientForm={setOpenAdminClientForm}
+    >
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         {/* Header */}
         <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b">
@@ -166,7 +163,7 @@ export function SemaApp() {
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 className="w-full justify-start mb-4"
               >
-                {sidebarCollapsed ? <ChevronRight className="h-5 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 {!sidebarCollapsed && <span className="ml-2">Collapse</span>}
               </Button>
 
@@ -187,7 +184,7 @@ export function SemaApp() {
                     >
                       <Icon className={cn(
                         "flex-shrink-0",
-                        sidebarCollapsed ? "h-4 w-4" : "h-5 w-5 mr-3"
+                        sidebarCollapsed ? "h-10 w-10" : "h-5 w-5 mr-3"
                       )} />
                       {!sidebarCollapsed && (
                         <div className="text-left">
