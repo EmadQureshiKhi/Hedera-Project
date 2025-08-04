@@ -304,14 +304,35 @@ class ApiClient {
       return this.demoData.certificates.find(c => c.certificate_id === certificateId) || null;
     }
 
-    const { data, error } = await supabase
+    // Fetch certificate with associated emission data
+    const { data: certificateData, error: certificateError } = await supabase
       .from('certificates')
       .select('*')
       .eq('certificate_id', certificateId)
       .single();
 
-    if (error) return null;
-    return data;
+    if (certificateError) return null;
+    if (!certificateData) return null;
+
+    // Fetch associated emission data if emission_data_id exists
+    let emissionDetails = null;
+    if (certificateData.emission_data_id) {
+      const { data: emissionData, error: emissionError } = await supabase
+        .from('emission_data')
+        .select('*')
+        .eq('id', certificateData.emission_data_id)
+        .single();
+
+      if (!emissionError && emissionData) {
+        emissionDetails = emissionData;
+      }
+    }
+
+    // Return certificate with emission details
+    return {
+      ...certificateData,
+      emission_details: emissionDetails
+    };
   }
 
   // Carbon Credits

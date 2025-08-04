@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, Download, Calculator, Leaf, FileSpreadsheet, Archive, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Calculator, Leaf, FileSpreadsheet, Archive, Trash2, Award } from 'lucide-react';
 import { EmissionEntry, QuestionnaireData } from '../../types/ghg';
 import { exportToExcel, ExportData } from '../../utils/excelExport';
+import { GHGCertificatePreview } from './GHGCertificatePreview';
 
 interface GHGResultsProps {
   questionnaire: QuestionnaireData;
@@ -26,8 +27,53 @@ const GHGResults: React.FC<GHGResultsProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
+  const [showCertificatePreview, setShowCertificatePreview] = useState(false);
+  const [generatedCertificate, setGeneratedCertificate] = useState<any>(null);
 
   console.log('GHGResults rendered with:', { questionnaire, entries: entries.length, totalEmissions });
+
+  // If showing certificate preview, render that instead
+  if (showCertificatePreview) {
+    // Create calculations object for certificate preview
+    const calculations = {
+      totalEmissions,
+      categoryBreakdown: entries.reduce((acc, entry) => {
+        const category = entry.category || 'Other';
+        acc[category] = (acc[category] || 0) + entry.emissions;
+        return acc;
+      }, {} as Record<string, number>),
+      breakdown: entries.reduce((acc, entry) => {
+        const key = `${entry.scope} - ${entry.fuelType}`;
+        acc[key] = (acc[key] || 0) + entry.emissions;
+        return acc;
+      }, {} as Record<string, number>),
+      summary: {
+        processedRows: entries.length,
+        totalRows: entries.length,
+        categories: Object.keys(entries.reduce((acc, entry) => {
+          acc[entry.category || 'Other'] = true;
+          return acc;
+        }, {} as Record<string, boolean>)).length
+      },
+      processedData: entries
+    };
+
+    return (
+      <div className="max-w-6xl mx-auto">
+        <GHGCertificatePreview
+          questionnaire={questionnaire}
+          entries={entries}
+          totalEmissions={totalEmissions}
+          calculations={calculations}
+          onGenerate={(certificate) => {
+            setGeneratedCertificate(certificate);
+            // Stay on certificate preview to show success
+          }}
+          onPrevious={() => setShowCertificatePreview(false)}
+        />
+      </div>
+    );
+  }
 
   // Calculate emissions by scope
   const scope1Emissions = entries.filter(e => e.scope === 'Scope 1').reduce((sum, e) => sum + e.emissions, 0);
@@ -97,25 +143,28 @@ const GHGResults: React.FC<GHGResultsProps> = ({
                 </>
               )}
             </button>
+
+            <button 
+              onClick={() => setShowCertificatePreview(true)}
+              disabled={entries.length === 0}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Award className="w-4 h-4" />
+              <span>Generate Certificate</span>
+            </button>
           </div>
         </div>
 
         {/* Export Information */}
         {entries.length > 0 && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Export Report Contents:</h4>
+            <h4 className="font-medium text-blue-900 mb-2">Available Actions:</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-blue-800">
               <div>
-                <strong>Questionnaire Sheet:</strong> Organization details and assessment scope
+                <strong>Export Report:</strong> Download Excel/CSV with all calculation data
               </div>
               <div>
-                <strong>Summary Sheet:</strong> Total emissions and key metrics
-              </div>
-              <div>
-                <strong>Calculations Sheet:</strong> Detailed emission calculations ({entries.length} entries)
-              </div>
-              <div>
-                <strong>Activity Breakdown Sheet:</strong> Emissions by fuel type and scope
+                <strong>Generate Certificate:</strong> Create blockchain-verified certificate on Hedera
               </div>
               {Object.values(emissionFactors).some(scope => 
                 Object.values(scope).some(category => 
@@ -128,6 +177,12 @@ const GHGResults: React.FC<GHGResultsProps> = ({
                   <strong>Custom Fuels Sheet:</strong> User-defined emission factors
                 </div>
               )}
+              <div>
+                <strong>Certificate Features:</strong> NFT minting, HCS logging, IPFS metadata
+              </div>
+              <div>
+                <strong>Verification:</strong> HashScan links for on-chain proof
+              </div>
             </div>
           </div>
         )}

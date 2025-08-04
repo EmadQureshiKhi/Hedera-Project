@@ -472,6 +472,32 @@ export const useGHGCalculator = () => {
     setCurrentStep('results');
   };
 
+  // Create calculations object for certificate generation
+  const getCalculationsForCertificate = () => {
+    return {
+      totalEmissions,
+      categoryBreakdown: entries.reduce((acc, entry) => {
+        const category = entry.category || 'Other';
+        acc[category] = (acc[category] || 0) + entry.emissions;
+        return acc;
+      }, {} as Record<string, number>),
+      breakdown: entries.reduce((acc, entry) => {
+        const key = `${entry.scope} - ${entry.fuelType}`;
+        acc[key] = (acc[key] || 0) + entry.emissions;
+        return acc;
+      }, {} as Record<string, number>),
+      summary: {
+        processedRows: entries.length,
+        totalRows: entries.length,
+        categories: Object.keys(entries.reduce((acc, entry) => {
+          acc[entry.category || 'Other'] = true;
+          return acc;
+        }, {} as Record<string, boolean>)).length
+      },
+      processedData: entries
+    };
+  };
+
   // Clear all GHG data (useful for starting fresh)
   const clearAllGHGData = () => {
     setQuestionnaire({
@@ -568,6 +594,7 @@ export const useGHGCalculator = () => {
     loadGHGData,
     saveGHGData,
     refreshGHGData,
-    refreshEmissionFactors //  NEW: For forcing emission factors update
+    refreshEmissionFactors, // 🔧 NEW: For forcing emission factors update
+    getCalculationsForCertificate // 🔧 NEW: For certificate generation
   };
 };

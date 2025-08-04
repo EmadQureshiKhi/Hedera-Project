@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useState } from 'react';
 import { getHashScanUrl } from '@/lib/hedera';
+import { EmissionEntry } from '@/types/ghg';
 
 interface CertificateDetailProps {
   certificateId: string;
@@ -262,6 +263,177 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Detailed Activities - Only show if we have emission details */}
+      {certificate.emission_details?.processed_data && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Detailed Activities</CardTitle>
+            <CardDescription>
+              Complete breakdown of all calculated emission activities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {certificate.emission_details.processed_data.map((entry: any, index: number) => (
+                <div key={entry.id || index} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-lg">{entry.fuelType || entry.activity}</h4>
+                        <Badge variant={entry.scope === 'Scope 1' ? 'default' : 'secondary'} className="text-xs">
+                          {entry.scope}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        {(entry.emissions || entry.amount)?.toFixed(2)} kg CO₂e
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {(((entry.emissions || entry.amount) / certificate.total_emissions) * 100).toFixed(1)}% of total
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 text-sm">
+                    <div>
+                      <label className="text-muted-foreground">Category:</label>
+                      <p className="font-medium">{entry.category}</p>
+                    </div>
+                    {entry.equipmentType && (
+                      <div>
+                        <label className="text-muted-foreground">Equipment:</label>
+                        <p className="font-medium">{entry.equipmentType}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-muted-foreground">Fuel Category:</label>
+                      <p className="font-medium">{entry.fuelCategory}</p>
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground">Amount:</label>
+                      <p className="font-medium">{entry.amount} {entry.unit_type || entry.unit}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="grid gap-3 md:grid-cols-3 text-xs text-muted-foreground">
+                      <div>
+                        <span>Emission Factor: </span>
+                        <span className="font-mono">
+                          {(entry.convertedFactor || entry.emissionFactor || 0).toFixed(6)} kg CO₂e/{entry.unit_type || entry.unit}
+                        </span>
+                      </div>
+                      <div>
+                        <span>Calculated: </span>
+                        <span>{new Date(entry.timestamp || entry.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div>
+                        <span>Entry ID: </span>
+                        <span className="font-mono">{(entry.id || index).toString().substring(0, 8)}...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary Statistics */}
+            <div className="mt-6 pt-6 border-t">
+              <h4 className="font-medium mb-4">Calculation Summary</h4>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {certificate.emission_details.processed_data.filter((e: any) => e.scope === 'Scope 1').length}
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">Scope 1 Activities</div>
+                  <div className="text-xs text-blue-600">
+                    {(certificate.emission_details.processed_data
+                      .filter((e: any) => e.scope === 'Scope 1')
+                      .reduce((sum: number, e: any) => sum + (e.emissions || e.amount || 0), 0) / 1000).toFixed(2)} tonnes CO₂e
+                  </div>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {certificate.emission_details.processed_data.filter((e: any) => e.scope === 'Scope 2').length}
+                  </div>
+                  <div className="text-sm text-green-700 dark:text-green-300">Scope 2 Activities</div>
+                  <div className="text-xs text-green-600">
+                    {(certificate.emission_details.processed_data
+                      .filter((e: any) => e.scope === 'Scope 2')
+                      .reduce((sum: number, e: any) => sum + (e.emissions || e.amount || 0), 0) / 1000).toFixed(2)} tonnes CO₂e
+                  </div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-950 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {new Set(certificate.emission_details.processed_data.map((e: any) => e.category)).size}
+                  </div>
+                  <div className="text-sm text-purple-700 dark:text-purple-300">Categories Used</div>
+                  <div className="text-xs text-purple-600">
+                    {(certificate.total_emissions / 1000).toFixed(2)} tonnes CO₂e total
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Organizational Details */}
+      {certificate.emission_details?.raw_data?.[0] && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Assessment Details</CardTitle>
+            <CardDescription>
+              GHG assessment configuration and scope
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Organization</label>
+                  <p className="font-medium">{certificate.emission_details.raw_data[0].orgName || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Boundary Approach</label>
+                  <p className="font-medium">{certificate.emission_details.raw_data[0].boundaryApproach || 'Not specified'}</p>
+                  {certificate.emission_details.raw_data[0].controlSubtype && (
+                    <p className="text-sm text-muted-foreground">→ {certificate.emission_details.raw_data[0].controlSubtype}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Operational Boundary</label>
+                  <p className="font-medium">{certificate.emission_details.raw_data[0].operationalBoundary || 'Not specified'}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Emission Sources</label>
+                  <p className="font-medium">{certificate.emission_details.raw_data[0].emissionSources || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Total Activities</label>
+                  <p className="font-medium">{certificate.emission_details.processed_data?.length || 0} calculations</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Assessment Date</label>
+                  <p className="font-medium">
+                    {certificate.emission_details.raw_data[0].timestamp 
+                      ? format(new Date(certificate.emission_details.raw_data[0].timestamp), 'PPP')
+                      : format(new Date(certificate.created_at), 'PPP')
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-4">
