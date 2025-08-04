@@ -16,7 +16,6 @@ import {
   Upload, 
   Award, 
   ShoppingCart,
-  Trophy,
   Target,
   Calculator
 } from 'lucide-react';
@@ -29,7 +28,6 @@ const navigation = [
   { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart },
   { name: 'GHG Calculator', href: '/ghg-calculator', icon: Calculator },
   { name: 'SEMA Tool', href: '/sema', icon: Target },
-  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
 ];
 
 export function Navbar() {
@@ -44,12 +42,14 @@ export function Navbar() {
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Leaf className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="hidden font-bold sm:inline-block">
-                Hedera GHG Platform
+            <Link href="/" className="flex items-center">
+              <img 
+                src="https://i.ibb.co/dwzM2KLM/Untitled-design-removebg-preview.png" 
+                alt="Green Trace Logo" 
+               className="h-12 w-16 object-contain -mt-1"
+              />
+             <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight -ml-3">
+                GreenTrace
               </span>
             </Link>
 

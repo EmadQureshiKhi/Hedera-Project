@@ -193,6 +193,28 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                   </div>
                 </div>
               )}
+              {certificate.hcs_message_id && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">HCS Message Transaction</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
+                      {certificate.hcs_message_id.substring(0, 16)}...
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(certificate.hcs_message_id!)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={getHashScanUrl(certificate.hcs_message_id)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
               {certificate.ipfs_cid && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">IPFS Metadata</label>
@@ -255,7 +277,15 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
           <Button variant="outline" asChild>
             <a href={getHashScanUrl(certificate.blockchain_tx)} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4 mr-2" />
-              View on HashScan
+              View NFT on HashScan
+            </a>
+          </Button>
+        )}
+        {certificate.hcs_message_id && (
+          <Button variant="outline" asChild>
+            <a href={getHashScanUrl(certificate.hcs_message_id)} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              HCS Log Transaction
             </a>
           </Button>
         )}

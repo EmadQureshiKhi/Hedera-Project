@@ -126,11 +126,3 @@ export function useCreateTransaction(userId?: string) {
     },
   });
 }
-
-// Leaderboard hooks
-export function useLeaderboard() {
-  return useQuery({
-    queryKey: ['leaderboard'],
-    queryFn: () => apiClient.getLeaderboard(),
-  });
-}

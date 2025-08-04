@@ -8,7 +8,7 @@ import { Navbar } from '@/components/layout/navbar';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'GHG Platform',
+  title: 'Green Trace',
   description: 'Verifiable carbon certificates and offset marketplace',
 };
 

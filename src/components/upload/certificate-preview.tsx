@@ -63,9 +63,37 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
     setHederaError(null);
 
     try {
-      // 1. Generate IPFS CID for certificate metadata
-      const certificateMetadata = {
+      // 1. Generate certificate data structure first
+      const certificateData = {
+        certificate_id: `GHG-${Date.now()}`,
         title: `Emissions Certificate - ${format(new Date(), 'MMM yyyy')}`,
+        total_emissions: calculations.totalEmissions,
+        breakdown: calculations.breakdown || calculations.categoryBreakdown,
+        blockchain_tx: null, // Will be updated with Hedera transaction ID
+        hcs_message_id: null, // Will be updated with HCS message ID
+        ipfs_cid: null, // Will be updated with IPFS CID
+        hedera_nft_serial: null, // Will be updated with NFT serial number
+      };
+
+      // Debug: Log calculations object before hashing
+      console.log('🔍 Calculations object for hashing:', calculations);
+      console.log('🔍 Breakdown data:', calculations.breakdown || calculations.categoryBreakdown);
+      
+      // Generate data hash from calculations
+      const hashData = {
+        totalEmissions: calculations.totalEmissions,
+        breakdown: calculations.breakdown || calculations.categoryBreakdown,
+        summary: calculations.summary || {},
+        processedData: calculations.processedData || [],
+        timestamp: new Date().toISOString()
+      };
+      console.log('🔍 Hash data object:', hashData);
+      
+      certificateData.data_hash = CryptoJS.SHA256(JSON.stringify(hashData)).toString();
+      console.log('🔍 Generated data hash:', certificateData.data_hash);
+      // 2. Generate IPFS CID for certificate metadata
+      const certificateMetadata = {
+        title: certificateData.title,
         totalEmissions: calculations.totalEmissions,
         breakdown: calculations.breakdown || calculations.categoryBreakdown,
         summary: calculations.summary,
@@ -74,48 +102,30 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
       };
       
       const ipfsCid = await uploadToIPFS(certificateMetadata);
+      certificateData.ipfs_cid = ipfsCid;
       setIpfsCid(ipfsCid);
 
-      // 2. Generate certificate data
-      const certificateData = {
-        certificate_id: `GHG-${Date.now()}`,
-        title: certificateMetadata.title,
-        total_emissions: calculations.totalEmissions,
-        breakdown: calculations.breakdown || calculations.categoryBreakdown,
-        data_hash: CryptoJS.SHA256(JSON.stringify(calculations)).toString(),
-        blockchain_tx: null, // Will be updated with Hedera transaction ID
-        ipfs_cid: ipfsCid,
-      };
-        let hcsLogTxId: string | null = null;
-
-      // 3. Save certificate to Supabase
-      const result = await createCertificate.mutateAsync({
-        emissionDataId: emissionDataId || 'temp-emission-id',
-        certificateData,
-      });
-
-      // 4. Hedera integrations (if configured)
+      // 3. Hedera integrations (if configured) - Do BEFORE saving to database
       if (isHederaConfigured()) {
         try {
-          // 4a. Mint NFT on Hedera (if token ID is configured)
+          // 3a. Mint NFT on Hedera (if token ID is configured)
           if (HEDERA_CERTIFICATE_NFT_TOKEN_ID) {
             const nftTxId = await mintNFT(HEDERA_CERTIFICATE_NFT_TOKEN_ID, ipfsCid);
-            setHederaTxId(nftTxId);
-            
-            // Update certificate with Hedera transaction ID
             certificateData.blockchain_tx = nftTxId;
+            setHederaTxId(nftTxId);
             console.log('✅ NFT minted on Hedera:', nftTxId);
           }
 
-          // 4b. Log to HCS (if topic ID is configured)
+          // 3b. Log to HCS (if topic ID is configured)
           if (HEDERA_HCS_TOPIC_ID) {
             const hcsLogTxId = await logCertificateToHCS(HEDERA_HCS_TOPIC_ID, {
-              certificateId: result.certificate_id,
-              dataHash: result.data_hash,
-              totalEmissions: result.total_emissions,
-              breakdown: result.breakdown,
+              certificateId: certificateData.certificate_id,
+              dataHash: certificateData.data_hash,
+              totalEmissions: certificateData.total_emissions,
+              breakdown: certificateData.breakdown,
               timestamp: new Date().toISOString()
-            }); // Assign to hcsLogTxId
+            });
+            certificateData.hcs_message_id = hcsLogTxId;
             setHcsTxId(hcsLogTxId);
             console.log('✅ Certificate logged to HCS:', hcsLogTxId);
           }
@@ -127,6 +137,12 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
       } else {
         setHederaError('Hedera not configured. Certificate saved locally only.');
       }
+
+      // 4. Save certificate to Supabase with all Hedera transaction IDs
+      const result = await createCertificate.mutateAsync({
+        emissionDataId: emissionDataId || 'temp-emission-id',
+        certificateData,
+      });
 
       setCertificate(result);
       onGenerate(result);

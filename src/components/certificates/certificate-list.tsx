@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useUserCertificates } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   Award, 
   Search, 
@@ -17,12 +18,14 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { getHashScanUrl } from '@/lib/hedera';
 
 export function CertificateList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { user } = useAuth();
   
-  const { data: certificates, isLoading } = useUserCertificates();
+  const { data: certificates, isLoading } = useUserCertificates(user?.id);
 
   const filteredCertificates = certificates?.filter(cert => {
     const matchesSearch = cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -31,6 +34,43 @@ export function CertificateList() {
     return matchesSearch && matchesStatus;
   }) || [];
 
+  // Download certificate as text file
+  const downloadCertificatePDF = (certificate: any) => {
+    const content = `
+CARBON EMISSIONS CERTIFICATE
+============================
+
+Certificate ID: ${certificate.certificate_id}
+Title: ${certificate.title}
+Total Emissions: ${certificate.total_emissions.toLocaleString()} kg CO₂e
+Issue Date: ${format(new Date(certificate.issue_date), 'PPP')}
+Valid Until: ${format(new Date(certificate.valid_until), 'PPP')}
+Status: ${certificate.status}
+
+EMISSIONS BREAKDOWN:
+${Object.entries(certificate.breakdown).map(([category, emissions]) => 
+  `${category}: ${Number(emissions).toFixed(2)} kg CO₂e`
+).join('\n')}
+
+BLOCKCHAIN VERIFICATION:
+${certificate.blockchain_tx ? `Transaction: ${certificate.blockchain_tx}` : 'No blockchain transaction'}
+${certificate.hcs_message_id ? `HCS Message: ${certificate.hcs_message_id}` : 'No HCS message'}
+${certificate.data_hash ? `Data Hash: ${certificate.data_hash}` : 'No data hash'}
+${certificate.ipfs_cid ? `IPFS CID: ${certificate.ipfs_cid}` : 'No IPFS metadata'}
+
+Generated: ${new Date().toLocaleString()}
+    `.trim();
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Certificate_${certificate.certificate_id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'verified':
@@ -200,12 +240,28 @@ export function CertificateList() {
                       View Details
                     </Link>
                   </Button>
-                  <Button variant="outline" size="sm">
+                 <Button 
+                   variant="outline" 
+                   size="sm"
+                   onClick={() => downloadCertificatePDF(certificate)}
+                   title="Download Certificate"
+                 >
                     <Download className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+                  {certificate.blockchain_tx && (
+                    <Button variant="outline" size="sm" asChild title="View NFT on HashScan">
+                      <a href={getHashScanUrl(certificate.blockchain_tx)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                  {certificate.hcs_message_id && (
+                    <Button variant="outline" size="sm" asChild title="View HCS Log Transaction">
+                      <a href={getHashScanUrl(certificate.hcs_message_id)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

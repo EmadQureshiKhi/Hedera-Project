@@ -235,6 +235,9 @@ class ApiClient {
       issue_date: new Date().toISOString().split('T')[0],
       valid_until: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       blockchain_tx: certificateData.blockchain_tx,
+      hcs_message_id: certificateData.hcs_message_id,
+      ipfs_cid: certificateData.ipfs_cid,
+      hedera_nft_serial: certificateData.hedera_nft_serial,
       data_hash: certificateData.data_hash || '',
       created_at: new Date().toISOString(),
     };
@@ -445,38 +448,6 @@ class ApiClient {
     };
   }
 
-  // Leaderboard
-  async getLeaderboard() {
-    if (DEMO_MODE) {
-      return [
-        {
-          rank: 1,
-          name: 'EcoTech Solutions',
-          totalEmissions: 1250,
-          offsetCredits: 1500,
-          netEmissions: -250,
-          offsetPercentage: 120,
-          certificates: 8,
-          change: 2,
-          badge: 'Carbon Negative',
-        },
-        {
-          rank: 2,
-          name: 'Green Industries Ltd',
-          totalEmissions: 2100,
-          offsetCredits: 2000,
-          netEmissions: 100,
-          offsetPercentage: 95,
-          certificates: 12,
-          change: 1,
-          badge: 'Climate Leader',
-        }
-      ];
-    }
-
-    // Real implementation would aggregate user data
-    return [];
-  }
 }
 
 export const apiClient = new ApiClient();
