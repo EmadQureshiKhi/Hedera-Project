@@ -17,6 +17,7 @@ import {
 import { useSema } from './sema-context';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   MessageSquare, 
   Plus, 
@@ -37,7 +38,16 @@ const GRI_CODES = [
 ];
 
 export default function QuestionnaireEngine() {
-  const { activeClient, materialTopics, questionnaireResponses, refreshData } = useSema();
+  const { 
+    activeClient, 
+    materialTopics, 
+    questionnaireResponses, 
+    refreshData, 
+    latestMaterialTopicHcsTx,
+    addMaterialTopic,
+    updateMaterialTopic,
+    deleteMaterialTopic
+  } = useSema();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -79,31 +89,14 @@ export default function QuestionnaireEngine() {
     setIsLoading(true);
     try {
       if (editingTopic) {
-        const { error } = await supabase
-          .from('sema_material_topics')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingTopic.id);
-
-        if (error) throw error;
+        await updateMaterialTopic(editingTopic.id, formData);
 
         toast({
           title: "Topic Updated",
           description: `${formData.name} has been updated successfully.`,
         });
       } else {
-        const { error } = await supabase
-          .from('sema_material_topics')
-          .insert([{
-            ...formData,
-            client_id: activeClient.id,
-            average_score: Math.random() * 3 + 7, // Demo: Random score between 7-10
-            response_count: Math.floor(Math.random() * 20) + 30 // Demo: 30-50 responses
-          }]);
-
-        if (error) throw error;
+        await addMaterialTopic(formData);
 
         toast({
           title: "Topic Added",
@@ -111,7 +104,6 @@ export default function QuestionnaireEngine() {
         });
       }
 
-      await refreshData();
       resetForm();
     } catch (error: any) {
       toast({
@@ -128,19 +120,12 @@ export default function QuestionnaireEngine() {
     if (!confirm(`Are you sure you want to delete ${topic.name}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('sema_material_topics')
-        .delete()
-        .eq('id', topic.id);
-
-      if (error) throw error;
+      await deleteMaterialTopic(topic.id);
 
       toast({
         title: "Topic Deleted",
         description: `${topic.name} has been deleted.`,
       });
-
-      await refreshData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -452,6 +437,13 @@ export default function QuestionnaireEngine() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* HCS Transaction Display */}
+      <HcsTransactionDisplay 
+        transaction={latestMaterialTopicHcsTx}
+        title="Material Topics Verification"
+        description="Latest material topic action logged to Hedera Consensus Service"
+      />
     </div>
   );
 }

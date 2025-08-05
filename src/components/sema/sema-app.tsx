@@ -134,7 +134,7 @@ export function SemaApp() {
                 <div>
                   <h1 className="text-xl font-bold">SEMA Automation Tool</h1>
                   <p className="text-sm text-muted-foreground">
-                    Stakeholder Engagement & Materiality Assessment
+                    Stakeholder Engagement & Materiality Assessment • Hedera Verified
                   </p>
                 </div>
               </div>

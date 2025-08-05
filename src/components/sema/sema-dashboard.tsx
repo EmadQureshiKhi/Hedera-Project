@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useSema } from './sema-context';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Users, 
   Target, 
@@ -23,7 +24,8 @@ export default function SemaDashboard() {
     materialTopics, 
     internalTopics, 
     reports,
-    isLoading 
+    isLoading,
+    latestReportHcsTx
   } = useSema();
 
   if (isLoading) {
@@ -266,6 +268,15 @@ export default function SemaDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Latest HCS Transaction */}
+      {latestReportHcsTx && (
+        <HcsTransactionDisplay 
+          transaction={latestReportHcsTx}
+          title="Latest SEMA Verification"
+          description="Most recent SEMA process milestone logged to Hedera"
+        />
+      )}
 
       {/* GRI Framework Info */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">

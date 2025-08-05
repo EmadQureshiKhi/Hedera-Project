@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSema } from './sema-context';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Grid3X3, 
   TrendingUp, 
@@ -13,7 +14,13 @@ import {
 } from 'lucide-react';
 
 export default function MaterialityMatrix() {
-  const { activeClient, materialTopics, internalTopics } = useSema();
+  const { 
+    activeClient, 
+    materialTopics, 
+    internalTopics, 
+    latestMaterialTopicHcsTx, 
+    latestInternalTopicHcsTx 
+  } = useSema();
 
   if (!activeClient) {
     return (

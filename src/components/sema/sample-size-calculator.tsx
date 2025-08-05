@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSema } from './sema-context';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Calculator, 
   Users, 
@@ -110,7 +111,14 @@ function CustomSlider({
 }
 
 export default function SampleSizeCalculator() {
-  const { activeClient, sampleParameters, stakeholders, refreshData } = useSema();
+  const { 
+    activeClient, 
+    sampleParameters, 
+    stakeholders, 
+    refreshData, 
+    latestSampleParamsHcsTx,
+    updateSampleParameters
+  } = useSema();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -123,24 +131,24 @@ export default function SampleSizeCalculator() {
   const handleSave = async () => {
     if (!activeClient) return;
 
+    // Don't allow saving for demo client
+    if (activeClient.status === 'demo') {
+      toast({
+        title: "Demo Mode",
+        description: "Sample parameters cannot be saved in demo mode. Create a new client to save parameters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('sema_sample_parameters')
-        .upsert({
-          client_id: activeClient.id,
-          ...parameters,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
+      await updateSampleParameters(parameters);
 
       toast({
         title: "Parameters Saved",
         description: "Sample size parameters have been updated successfully.",
       });
-
-      await refreshData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -240,7 +248,7 @@ export default function SampleSizeCalculator() {
               />
               
               <Button onClick={handleSave} disabled={isLoading} className="w-full">
-                {isLoading ? 'Saving...' : 'Save Parameters'}
+                {isLoading ? 'Saving...' : activeClient?.status === 'demo' ? 'Demo Mode - Cannot Save' : 'Save Parameters'}
               </Button>
             </div>
           </CardContent>
@@ -454,6 +462,13 @@ export default function SampleSizeCalculator() {
           )}
         </CardContent>
       </Card>
+
+      {/* HCS Transaction Display */}
+      <HcsTransactionDisplay 
+        transaction={latestSampleParamsHcsTx}
+        title="Sample Parameters Verification"
+        description="Latest sample size parameters logged to Hedera Consensus Service"
+      />
 
       {/* Statistical Methodology */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">

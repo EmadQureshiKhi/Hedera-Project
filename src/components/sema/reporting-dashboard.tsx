@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useSema } from './sema-context';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
+import { useToast } from '@/hooks/use-toast';
 import { 
   FileText, 
   Download, 
@@ -19,6 +21,7 @@ import {
   Calendar,
   TrendingUp
 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ReportingDashboard() {
   const { 
@@ -27,8 +30,12 @@ export default function ReportingDashboard() {
     sampleParameters, 
     materialTopics, 
     internalTopics, 
-    reports 
+    reports,
+    latestReportHcsTx,
+    finalizeReport
   } = useSema();
+  const { toast } = useToast();
+  const [isFinalizingReport, setIsFinalizingReport] = useState(false);
 
   if (!activeClient) {
     return (
@@ -87,6 +94,53 @@ export default function ReportingDashboard() {
 
   const totalGriDisclosures = finalMaterialTopics.length;
   const mappedGriDisclosures = griDisclosures.length;
+
+  // Calculate progress metrics
+  const stakeholderProgress = stakeholders.length > 0 ? 100 : 0;
+  const sampleSizeProgress = sampleParameters ? 100 : 0;
+  const externalProgress = materialTopics.length > 0 ? 100 : 0;
+  const internalProgress = internalTopics.length > 0 ? 100 : 0;
+  const overallProgress = Math.round((stakeholderProgress + sampleSizeProgress + externalProgress + internalProgress) / 4);
+
+  const priorityStakeholders = stakeholders.filter(s => s.is_priority).length;
+
+  const handleFinalizeReport = async () => {
+    if (!activeClient) return;
+
+    setIsFinalizingReport(true);
+    try {
+      const reportData = {
+        clientId: activeClient.id,
+        clientName: activeClient.name,
+        materialTopics: finalMaterialTopics,
+        stakeholders: stakeholders.length,
+        priorityStakeholders,
+        griDisclosures: mappedGriDisclosures,
+        processMetrics: {
+          stakeholderProgress,
+          sampleSizeProgress,
+          externalProgress,
+          internalProgress,
+          overallProgress
+        }
+      };
+
+      await finalizeReport(reportData);
+      
+      toast({
+        title: "Report Finalized",
+        description: "SEMA report has been logged to Hedera Consensus Service for verification.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to finalize report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFinalizingReport(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -226,6 +280,87 @@ export default function ReportingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Finalize Report Section */}
+      <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950 dark:to-indigo-950 border-purple-200 dark:border-purple-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
+            <CheckCircle className="h-5 w-5" />
+            Finalize SEMA Report
+          </CardTitle>
+          <CardDescription>
+            Log your completed SEMA assessment to Hedera for immutable verification
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-purple-200 dark:border-purple-700">
+            <h4 className="font-semibold mb-4">Report Summary</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Stakeholders:</span>
+                  <span className="font-medium">{stakeholders.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Priority Stakeholders:</span>
+                  <span className="font-medium">{priorityStakeholders}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Material Topics:</span>
+                  <span className="font-medium">{finalMaterialTopics.length}</span>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GRI Disclosures:</span>
+                  <span className="font-medium">{mappedGriDisclosures}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Process Complete:</span>
+                  <span className="font-medium">{overallProgress}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Assessment Date:</span>
+                  <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <Button 
+              onClick={handleFinalizeReport}
+              disabled={isFinalizingReport || overallProgress < 70}
+              size="lg"
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isFinalizingReport ? (
+                <>
+                  <Clock className="h-5 w-5 mr-2 animate-spin" />
+                  Logging to Hedera...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Finalize & Log to Hedera
+                </>
+              )}
+            </Button>
+            {overallProgress < 70 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Complete at least 70% of the SEMA process to finalize the report
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* HCS Transaction Display */}
+      <HcsTransactionDisplay 
+        transaction={latestReportHcsTx}
+        title="Report Finalization Verification"
+        description="SEMA report completion logged to Hedera Consensus Service"
+      />
 
       {/* Final Material Topics - New Card-based Design */}
       <Card>

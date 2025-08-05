@@ -18,6 +18,7 @@ import { useSema } from './sema-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Settings, 
   Plus, 
@@ -30,7 +31,7 @@ import {
 } from 'lucide-react';
 
 export default function SemaAdminPanel() {
-  const { clients, addClient, updateClient, deleteClient, reloadClients } = useSema();
+  const { clients, addClient, updateClient, deleteClient, reloadClients, latestClientHcsTx } = useSema();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -341,6 +342,13 @@ export default function SemaAdminPanel() {
               )}
             </CardContent>
           </Card>
+
+          {/* HCS Transaction Display */}
+          <HcsTransactionDisplay 
+            transaction={latestClientHcsTx}
+            title="Client Management Verification"
+            description="Latest client management action logged to Hedera Consensus Service"
+          />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">

@@ -17,6 +17,7 @@ import {
 import { useSema } from './sema-context';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Target, 
   Plus, 
@@ -28,7 +29,15 @@ import {
 } from 'lucide-react';
 
 export default function InternalAssessment() {
-  const { activeClient, internalTopics, refreshData } = useSema();
+  const { 
+    activeClient, 
+    internalTopics, 
+    refreshData, 
+    latestInternalTopicHcsTx,
+    addInternalTopic,
+    updateInternalTopic,
+    deleteInternalTopic
+  } = useSema();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -73,29 +82,14 @@ export default function InternalAssessment() {
     setIsLoading(true);
     try {
       if (editingTopic) {
-        const { error } = await supabase
-          .from('sema_internal_topics')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingTopic.id);
-
-        if (error) throw error;
+        await updateInternalTopic(editingTopic.id, formData);
 
         toast({
           title: "Topic Updated",
           description: `${formData.name} has been updated successfully.`,
         });
       } else {
-        const { error } = await supabase
-          .from('sema_internal_topics')
-          .insert([{
-            ...formData,
-            client_id: activeClient.id
-          }]);
-
-        if (error) throw error;
+        await addInternalTopic(formData);
 
         toast({
           title: "Topic Added",
@@ -103,7 +97,6 @@ export default function InternalAssessment() {
         });
       }
 
-      await refreshData();
       resetForm();
     } catch (error: any) {
       toast({
@@ -120,19 +113,12 @@ export default function InternalAssessment() {
     if (!confirm(`Are you sure you want to delete ${topic.name}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('sema_internal_topics')
-        .delete()
-        .eq('id', topic.id);
-
-      if (error) throw error;
+      await deleteInternalTopic(topic.id);
 
       toast({
         title: "Topic Deleted",
         description: `${topic.name} has been deleted.`,
       });
-
-      await refreshData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -446,6 +432,13 @@ export default function InternalAssessment() {
           )}
         </CardContent>
       </Card>
+
+      {/* HCS Transaction Display */}
+      <HcsTransactionDisplay 
+        transaction={latestInternalTopicHcsTx}
+        title="Internal Assessment Verification"
+        description="Latest internal topic action logged to Hedera Consensus Service"
+      />
 
       {/* Risk Assessment Matrix */}
       {internalTopics.length > 0 && (

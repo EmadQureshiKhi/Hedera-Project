@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
+import { submitHCSMessage, isHederaConfigured, getHashScanUrl } from '@/lib/hedera';
+import CryptoJS from 'crypto-js';
 
 // Export SemaModule type for use in other components
 export type SemaModule = 
@@ -124,6 +126,17 @@ export interface SemaReport {
   updated_at: string;
 }
 
+export interface SemaTransaction {
+  txId: string;
+  hashScanUrl: string;
+  status: 'success' | 'pending' | 'error';
+  message: string;
+  dataHash: string;
+  timestamp: string;
+  action: string;
+  error?: string;
+}
+
 interface SemaContextType {
   // Client management
   clients: SemaClient[];
@@ -145,6 +158,27 @@ interface SemaContextType {
   refreshData: () => Promise<void>;
   reloadClients: () => Promise<void>;
   isLoading: boolean;
+  
+  // HCS Integration
+  latestClientHcsTx: SemaTransaction | null;
+  latestStakeholderHcsTx: SemaTransaction | null;
+  latestSampleParamsHcsTx: SemaTransaction | null;
+  latestMaterialTopicHcsTx: SemaTransaction | null;
+  latestInternalTopicHcsTx: SemaTransaction | null;
+  latestReportHcsTx: SemaTransaction | null;
+  finalizeReport: (reportData: any) => Promise<void>;
+  
+  // CRUD operations
+  addStakeholder: (data: any) => Promise<void>;
+  updateStakeholder: (id: string, updates: any) => Promise<void>;
+  deleteStakeholder: (id: string) => Promise<void>;
+  updateSampleParameters: (parameters: any) => Promise<void>;
+  addMaterialTopic: (data: any) => Promise<void>;
+  updateMaterialTopic: (id: string, updates: any) => Promise<void>;
+  deleteMaterialTopic: (id: string) => Promise<void>;
+  addInternalTopic: (data: any) => Promise<void>;
+  updateInternalTopic: (id: string, updates: any) => Promise<void>;
+  deleteInternalTopic: (id: string) => Promise<void>;
   
   // Navigation and form control
   setActiveSemaModule: (module: SemaModule) => void;
@@ -174,6 +208,14 @@ export function SemaProvider({
   const [questionnaireResponses, setQuestionnaireResponses] = useState<SemaQuestionnaireResponse[]>([]);
   const [reports, setReports] = useState<SemaReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // HCS Transaction states
+  const [latestClientHcsTx, setLatestClientHcsTx] = useState<SemaTransaction | null>(null);
+  const [latestStakeholderHcsTx, setLatestStakeholderHcsTx] = useState<SemaTransaction | null>(null);
+  const [latestSampleParamsHcsTx, setLatestSampleParamsHcsTx] = useState<SemaTransaction | null>(null);
+  const [latestMaterialTopicHcsTx, setLatestMaterialTopicHcsTx] = useState<SemaTransaction | null>(null);
+  const [latestInternalTopicHcsTx, setLatestInternalTopicHcsTx] = useState<SemaTransaction | null>(null);
+  const [latestReportHcsTx, setLatestReportHcsTx] = useState<SemaTransaction | null>(null);
 
   // Demo data for showcase
   const getDemoData = () => ({
@@ -722,8 +764,91 @@ export function SemaProvider({
     setIsLoading(false);
   };
 
+  // HCS Integration Helper - ENHANCED with payload support
+  const logToHCS = async (
+    action: string,
+    data: any,
+    setTxState: (tx: SemaTransaction | null) => void,
+    description: string,
+    payload: Record<string, any> = {} // New payload parameter for detailed context
+  ): Promise<void> => {
+    if (!isHederaConfigured()) {
+      console.warn('Hedera not configured, skipping HCS logging');
+      return;
+    }
+
+    const topicId = process.env.NEXT_PUBLIC_HEDERA_HCS_TOPIC_ID;
+    if (!topicId) {
+      console.warn('HCS Topic ID not configured, skipping HCS logging');
+      return;
+    }
+
+    try {
+      // Create data hash
+      const dataHash = CryptoJS.SHA256(JSON.stringify(data)).toString();
+      
+      // Create HCS message with detailed payload
+      const hcsMessage = {
+        type: 'SEMA_AUDIT_LOG',
+        version: '1.0',
+        action,
+        clientId: activeClient?.id,
+        clientName: activeClient?.name,
+        dataHash,
+        details: payload, // Include detailed payload for rich context
+        timestamp: new Date().toISOString(),
+        userId: user?.id,
+        description
+      };
+
+      // Set pending state
+      const pendingTx: SemaTransaction = {
+        txId: 'pending',
+        hashScanUrl: '',
+        status: 'pending',
+        message: `Logging ${action} to Hedera...`,
+        dataHash,
+        timestamp: new Date().toISOString(),
+        action
+      };
+      setTxState(pendingTx);
+
+      // Submit to HCS
+      const txId = await submitHCSMessage(topicId, JSON.stringify(hcsMessage));
+      
+      // Update with success state
+      const successTx: SemaTransaction = {
+        txId,
+        hashScanUrl: getHashScanUrl(txId),
+        status: 'success',
+        message: `${description} successfully logged to Hedera Consensus Service`,
+        dataHash,
+        timestamp: new Date().toISOString(),
+        action
+      };
+      setTxState(successTx);
+      
+      console.log(`✅ SEMA ${action} logged to HCS:`, txId);
+    } catch (error: any) {
+      console.error(`❌ Failed to log SEMA ${action} to HCS:`, error);
+      
+      const errorTx: SemaTransaction = {
+        txId: 'error',
+        hashScanUrl: '',
+        status: 'error',
+        message: `Failed to log ${action} to Hedera`,
+        dataHash: CryptoJS.SHA256(JSON.stringify(data)).toString(),
+        timestamp: new Date().toISOString(),
+        action,
+        error: error.message || 'Unknown error'
+      };
+      setTxState(errorTx);
+    }
+  };
+
   // Expose loadClients for external use
   const reloadClients = loadClients;
+  
   const addClient = async (clientData: Omit<SemaClient, 'id' | 'created_at' | 'updated_at'>): Promise<SemaClient> => {
     if (!user) throw new Error('User not authenticated');
 
@@ -753,6 +878,22 @@ export function SemaProvider({
       setActiveClient(data);
     }
     
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'client_added',
+      { clientId: data.id, name: data.name, industry: data.industry, size: data.size },
+      setLatestClientHcsTx,
+      'Client creation',
+      {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        industry: data.industry,
+        size: data.size,
+        status: data.status
+      }
+    );
+    
     return data;
   };
 
@@ -768,6 +909,18 @@ export function SemaProvider({
     if (activeClient?.id === id) {
       setActiveClient(prev => prev ? { ...prev, ...updates } : null);
     }
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'client_updated',
+      { clientId: id, updates },
+      setLatestClientHcsTx,
+      'Client update',
+      {
+        id,
+        updates
+      }
+    );
   };
 
   const deleteClient = async (id: string) => {
@@ -788,6 +941,388 @@ export function SemaProvider({
     if (activeClient?.id === id) {
       setActiveClient(null);
     }
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'client_deleted',
+      { clientId: id },
+      setLatestClientHcsTx,
+      'Client deletion',
+      {
+        id
+      }
+    );
+  };
+
+  // Add stakeholder function with enhanced HCS logging
+  const addStakeholder = async (stakeholderData: any): Promise<void> => {
+    if (!activeClient) throw new Error('No active client');
+
+    const { error } = await supabase
+      .from('sema_stakeholders')
+      .insert([{
+        ...stakeholderData,
+        client_id: activeClient.id
+      }]);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed stakeholder information
+    await logToHCS(
+      'stakeholder_added',
+      { 
+        clientId: activeClient.id, 
+        stakeholder: stakeholderData.name,
+        category: stakeholderData.category,
+        totalScore: stakeholderData.dependency_economic + stakeholderData.dependency_social + 
+                   stakeholderData.dependency_environmental + stakeholderData.influence_economic + 
+                   stakeholderData.influence_social + stakeholderData.influence_environmental
+      },
+      setLatestStakeholderHcsTx,
+      'Stakeholder addition',
+      {
+        name: stakeholderData.name,
+        category: stakeholderData.category,
+        type: stakeholderData.stakeholder_type,
+        dependency_scores: {
+          economic: stakeholderData.dependency_economic,
+          social: stakeholderData.dependency_social,
+          environmental: stakeholderData.dependency_environmental
+        },
+        influence_scores: {
+          economic: stakeholderData.influence_economic,
+          social: stakeholderData.influence_social,
+          environmental: stakeholderData.influence_environmental
+        },
+        total_score: stakeholderData.dependency_economic + stakeholderData.dependency_social + 
+                    stakeholderData.dependency_environmental + stakeholderData.influence_economic + 
+                    stakeholderData.influence_social + stakeholderData.influence_environmental,
+        population_size: stakeholderData.population_size,
+        is_priority: (stakeholderData.dependency_economic + stakeholderData.dependency_social + 
+                     stakeholderData.dependency_environmental + stakeholderData.influence_economic + 
+                     stakeholderData.influence_social + stakeholderData.influence_environmental) >= 16
+      }
+    );
+  };
+
+  // Update stakeholder function
+  const updateStakeholder = async (id: string, updates: any): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_stakeholders')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'stakeholder_updated',
+      { stakeholderId: id, updates },
+      setLatestStakeholderHcsTx,
+      'Stakeholder update',
+      {
+        id,
+        updates
+      }
+    );
+  };
+
+  // Delete stakeholder function
+  const deleteStakeholder = async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_stakeholders')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'stakeholder_deleted',
+      { stakeholderId: id },
+      setLatestStakeholderHcsTx,
+      'Stakeholder deletion',
+      {
+        id
+      }
+    );
+  };
+
+  // Update sample parameters function
+  const updateSampleParameters = async (parameters: any): Promise<void> => {
+    if (!activeClient) throw new Error('No active client');
+
+    // Don't save to database for demo client
+    if (activeClient.status === 'demo') {
+      console.log('Demo mode: Sample parameters not saved to database');
+      return;
+    }
+
+    // Prepare upsert data with existing ID if available
+    const upsertData = {
+      client_id: activeClient.id,
+      ...parameters,
+      updated_at: new Date().toISOString()
+    };
+
+    // Include existing ID if sampleParameters exists
+    if (sampleParameters?.id) {
+      upsertData.id = sampleParameters.id;
+    }
+
+    const { error } = await supabase
+      .from('sema_sample_parameters')
+      .upsert(upsertData);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'sample_parameters_updated',
+      { 
+        clientId: activeClient.id,
+        parameters: {
+          confidence_level: parameters.confidence_level,
+          margin_error: parameters.margin_error,
+          population_proportion: parameters.population_proportion
+        }
+      },
+      setLatestSampleParamsHcsTx,
+      'Sample parameters update',
+      {
+        confidence_level: parameters.confidence_level,
+        margin_error: parameters.margin_error,
+        population_proportion: parameters.population_proportion,
+        z_score: parameters.confidence_level === 0.90 ? 1.645 : 
+                parameters.confidence_level === 0.95 ? 1.96 : 
+                parameters.confidence_level === 0.99 ? 2.576 : 1.96,
+        calculated_sample_size: Math.ceil((
+          (parameters.confidence_level === 0.90 ? 1.645 : 
+           parameters.confidence_level === 0.95 ? 1.96 : 
+           parameters.confidence_level === 0.99 ? 2.576 : 1.96) ** 2 * 
+          parameters.population_proportion * (1 - parameters.population_proportion)
+        ) / (parameters.margin_error ** 2))
+      }
+    );
+  };
+
+  // Add material topic function
+  const addMaterialTopic = async (topicData: any): Promise<void> => {
+    if (!activeClient) throw new Error('No active client');
+
+    const { error } = await supabase
+      .from('sema_material_topics')
+      .insert([{
+        ...topicData,
+        client_id: activeClient.id,
+        average_score: Math.random() * 3 + 7, // Demo: Random score between 7-10
+        response_count: Math.floor(Math.random() * 20) + 30 // Demo: 30-50 responses
+      }]);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'material_topic_added',
+      { 
+        clientId: activeClient.id,
+        topic: topicData.name,
+        category: topicData.category,
+        gri_code: topicData.gri_code
+      },
+      setLatestMaterialTopicHcsTx,
+      'Material topic addition',
+      {
+        name: topicData.name,
+        description: topicData.description,
+        category: topicData.category,
+        gri_code: topicData.gri_code,
+        estimated_score: Math.random() * 3 + 7,
+        estimated_responses: Math.floor(Math.random() * 20) + 30
+      }
+    );
+  };
+
+  // Update material topic function
+  const updateMaterialTopic = async (id: string, updates: any): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_material_topics')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'material_topic_updated',
+      { topicId: id, updates },
+      setLatestMaterialTopicHcsTx,
+      'Material topic update',
+      {
+        id,
+        updates
+      }
+    );
+  };
+
+  // Delete material topic function
+  const deleteMaterialTopic = async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_material_topics')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'material_topic_deleted',
+      { topicId: id },
+      setLatestMaterialTopicHcsTx,
+      'Material topic deletion',
+      {
+        id
+      }
+    );
+  };
+
+  // Add internal topic function
+  const addInternalTopic = async (topicData: any): Promise<void> => {
+    if (!activeClient) throw new Error('No active client');
+
+    const { error } = await supabase
+      .from('sema_internal_topics')
+      .insert([{
+        ...topicData,
+        client_id: activeClient.id
+      }]);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'internal_topic_added',
+      { 
+        clientId: activeClient.id,
+        topic: topicData.name,
+        category: topicData.category,
+        severity: topicData.severity,
+        likelihood: topicData.likelihood,
+        significance: topicData.severity * topicData.likelihood
+      },
+      setLatestInternalTopicHcsTx,
+      'Internal topic addition',
+      {
+        name: topicData.name,
+        description: topicData.description,
+        category: topicData.category,
+        severity: topicData.severity,
+        likelihood: topicData.likelihood,
+        significance: topicData.severity * topicData.likelihood,
+        is_material: (topicData.severity * topicData.likelihood) >= 10
+      }
+    );
+  };
+
+  // Update internal topic function
+  const updateInternalTopic = async (id: string, updates: any): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_internal_topics')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'internal_topic_updated',
+      { topicId: id, updates },
+      setLatestInternalTopicHcsTx,
+      'Internal topic update',
+      {
+        id,
+        updates
+      }
+    );
+  };
+
+  // Delete internal topic function
+  const deleteInternalTopic = async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from('sema_internal_topics')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    await refreshData();
+    
+    // Log to HCS with detailed payload
+    await logToHCS(
+      'internal_topic_deleted',
+      { topicId: id },
+      setLatestInternalTopicHcsTx,
+      'Internal topic deletion',
+      {
+        id
+      }
+    );
+  };
+
+  // Finalize report function
+  const finalizeReport = async (reportData: any): Promise<void> => {
+    if (!activeClient) throw new Error('No active client');
+
+    // Create comprehensive report summary for HCS
+    const reportSummary = {
+      clientId: activeClient.id,
+      clientName: activeClient.name,
+      totalStakeholders: stakeholders.length,
+      priorityStakeholders: stakeholders.filter(s => s.is_priority).length,
+      materialTopicsExternal: materialTopics.filter(t => t.is_material).length,
+      materialTopicsInternal: internalTopics.filter(t => t.is_material).length,
+      totalMaterialTopics: materialTopics.filter(t => t.is_material).length + internalTopics.filter(t => t.is_material).length,
+      griDisclosures: materialTopics.filter(t => t.gri_code).length,
+      processCompletionDate: new Date().toISOString(),
+      sampleParameters: sampleParameters ? {
+        confidence_level: sampleParameters.confidence_level,
+        margin_error: sampleParameters.margin_error,
+        base_sample_size: sampleParameters.base_sample_size
+      } : null
+    };
+
+    // Log to HCS with comprehensive report summary as payload
+    await logToHCS(
+      'sema_report_finalized',
+      reportSummary,
+      setLatestReportHcsTx,
+      'SEMA report finalization',
+      reportSummary
+    );
   };
 
   const refreshData = async () => {
@@ -842,6 +1377,23 @@ export function SemaProvider({
       refreshData,
       reloadClients,
       isLoading,
+      latestClientHcsTx,
+      latestStakeholderHcsTx,
+      latestSampleParamsHcsTx,
+      latestMaterialTopicHcsTx,
+      latestInternalTopicHcsTx,
+      latestReportHcsTx,
+      addStakeholder,
+      updateStakeholder,
+      deleteStakeholder,
+      updateSampleParameters,
+      addMaterialTopic,
+      updateMaterialTopic,
+      deleteMaterialTopic,
+      addInternalTopic,
+      updateInternalTopic,
+      deleteInternalTopic,
+      finalizeReport,
       setActiveSemaModule,
       setOpenAdminClientForm
     }}>

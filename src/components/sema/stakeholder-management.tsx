@@ -16,6 +16,7 @@ import {
 import { useSema, SemaStakeholder } from './sema-context';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { HcsTransactionDisplay } from '@/components/ui/hcs-transaction-display';
 import { 
   Users, 
   Plus, 
@@ -48,7 +49,15 @@ const STAKEHOLDER_TYPES = [
 ];
 
 export default function StakeholderManagement() {
-  const { activeClient, stakeholders, refreshData } = useSema();
+  const { 
+    activeClient, 
+    stakeholders, 
+    refreshData, 
+    latestStakeholderHcsTx,
+    addStakeholder,
+    updateStakeholder,
+    deleteStakeholder
+  } = useSema();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState<SemaStakeholder | null>(null);
@@ -108,31 +117,14 @@ export default function StakeholderManagement() {
     setIsLoading(true);
     try {
       if (editingStakeholder) {
-        // Update existing stakeholder
-        const { error } = await supabase
-          .from('sema_stakeholders')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingStakeholder.id);
-
-        if (error) throw error;
+        await updateStakeholder(editingStakeholder.id, formData);
 
         toast({
           title: "Stakeholder Updated",
           description: `${formData.name} has been updated successfully.`,
         });
       } else {
-        // Create new stakeholder
-        const { error } = await supabase
-          .from('sema_stakeholders')
-          .insert([{
-            ...formData,
-            client_id: activeClient.id
-          }]);
-
-        if (error) throw error;
+        await addStakeholder(formData);
 
         toast({
           title: "Stakeholder Added",
@@ -140,7 +132,6 @@ export default function StakeholderManagement() {
         });
       }
 
-      await refreshData();
       resetForm();
     } catch (error: any) {
       toast({
@@ -157,19 +148,12 @@ export default function StakeholderManagement() {
     if (!confirm(`Are you sure you want to delete ${stakeholder.name}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('sema_stakeholders')
-        .delete()
-        .eq('id', stakeholder.id);
-
-      if (error) throw error;
+      await deleteStakeholder(stakeholder.id);
 
       toast({
         title: "Stakeholder Deleted",
         description: `${stakeholder.name} has been deleted.`,
       });
-
-      await refreshData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -601,6 +585,13 @@ export default function StakeholderManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* HCS Transaction Display */}
+      <HcsTransactionDisplay 
+        transaction={latestStakeholderHcsTx}
+        title="Stakeholder Management Verification"
+        description="Latest stakeholder action logged to Hedera Consensus Service"
+      />
 
       {/* Stakeholder Descriptions */}
       <div className="space-y-8">
