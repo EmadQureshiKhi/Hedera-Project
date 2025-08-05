@@ -2,6 +2,7 @@
 
 import { supabase } from './supabase';
 import { User } from './supabase';
+import { EthereumProvider } from '@walletconnect/ethereum-provider';
 
 // Authentication types
 export type AuthMethod = 'email' | 'wallet' | 'google';
@@ -465,9 +466,92 @@ class AuthService {
 
   // WalletConnect Integration
   private async connectWalletConnect(): Promise<AuthUser> {
-    // This would require WalletConnect SDK
-    // For now, throw error with instructions
-    throw new Error('WalletConnect integration requires additional setup. Please install @walletconnect/web3-provider');
+    // WalletConnect v2 Configuration
+    const HEDERA_TESTNET_EVM_CHAIN_ID = 296; // Chain ID for Hedera Testnet EVM
+    const HEDERA_TESTNET_EVM_RPC_URL = 'https://testnet.hashio.io/api'; // RPC URL for Hedera Testnet EVM
+    const PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+    if (!PROJECT_ID) {
+      throw new Error('WalletConnect Project ID is required. Please set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in your environment variables.');
+    }
+
+    // Clear any existing WalletConnect v1/v2 sessions from localStorage to force fresh connection
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('walletconnect');
+      localStorage.removeItem('walletconnect-session');
+      localStorage.removeItem('wc@2:client:0.3//session');
+      localStorage.removeItem('wc@2:core:0.3//keychain');
+      localStorage.removeItem('wc@2:core:0.3//messages');
+      localStorage.removeItem('wc@2:core:0.3//subscription');
+      localStorage.removeItem('wc@2:core:0.3//history');
+      localStorage.removeItem('wc@2:core:0.3//expirer');
+      localStorage.removeItem('wc@2:core:0.3//pairing');
+      // Clear any other WalletConnect related keys that might exist
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('walletconnect') || key.startsWith('wc@') || key.startsWith('wc_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      console.log('Cleared WalletConnect v1/v2 local storage entries for fresh connection');
+    }
+
+    // Initialize WalletConnect v2 Ethereum Provider
+    const provider = await EthereumProvider.init({
+      projectId: PROJECT_ID,
+      chains: [HEDERA_TESTNET_EVM_CHAIN_ID],
+      rpcMap: {
+        [HEDERA_TESTNET_EVM_CHAIN_ID]: HEDERA_TESTNET_EVM_RPC_URL,
+      },
+      showQrModal: true, // This will show the QR modal automatically
+      qrModalOptions: {
+        themeMode: 'light',
+        themeVariables: {
+          '--wcm-z-index': '1000'
+        }
+      }
+    });
+
+    try {
+      // Disconnect any existing sessions
+      if (provider.session) {
+        await provider.disconnect();
+        console.log('Disconnected existing WalletConnect v2 session');
+      }
+
+      // Connect to wallet (this will show the QR modal)
+      await provider.connect();
+
+      const accounts = provider.accounts;
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found via WalletConnect');
+      }
+
+      const walletAddress = accounts[0];
+      const message = `Sign this message to authenticate with GHG Platform.\n\nWallet: ${walletAddress}\nTimestamp: ${Date.now()}`;
+
+      // Request signature using WalletConnect v2 method
+      const signature = await provider.request({
+        method: 'personal_sign',
+        params: [message, walletAddress]
+      });
+
+      const user = await this.authenticateWallet(walletAddress, signature, message);
+
+      // Disconnect after successful authentication
+      await provider.disconnect();
+
+      return user;
+
+    } catch (error: any) {
+      // Ensure the provider is disconnected on error
+      if (provider.session) {
+        await provider.disconnect();
+      }
+      if (error.code === 4001) {
+        throw new Error('User rejected the connection or signature request.');
+      }
+      throw new Error(`WalletConnect connection failed: ${error.message || error}`);
+    }
   }
 
   // Wallet signature verification
