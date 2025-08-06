@@ -1,9 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useCertificate } from '@/hooks/use-api';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCertificate, useRetireCarbonCredits } from '@/hooks/use-api';
+import { useCertificateRetirementTransactions } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Award, 
   Download, 
@@ -12,13 +19,21 @@ import {
   Calendar,
   CheckCircle,
   Copy,
-  ArrowLeft
+  ArrowLeft,
+  Leaf,
+  Loader2,
+  AlertCircle,
+  Target,
+  Wallet,
+  ShoppingCart,
+  History,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { useState } from 'react';
 import { getHashScanUrl } from '@/lib/hedera';
 import { EmissionEntry } from '@/types/ghg';
+import React from 'react';
 
 interface CertificateDetailProps {
   certificateId: string;
@@ -26,7 +41,149 @@ interface CertificateDetailProps {
 
 export function CertificateDetail({ certificateId }: CertificateDetailProps) {
   const [copied, setCopied] = useState(false);
+  const [showRetirementForm, setShowRetirementForm] = useState(false);
+  const [retirementAmount, setRetirementAmount] = useState<number>(0);
+  const [userTokenBalance, setUserTokenBalance] = useState<number | null>(null);
+  const [userHederaAccountId, setUserHederaAccountId] = useState<string | null>(null);
+  
   const { data: certificate, isLoading } = useCertificate(certificateId);
+  const { data: retirementTransactions, isLoading: isLoadingRetirements } = useCertificateRetirementTransactions(certificate?.id);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const retireCarbonCredits = useRetireCarbonCredits(user?.id);
+
+  // Get user's Hedera Account ID and token balance
+  React.useEffect(() => {
+    const loadUserHederaInfo = async () => {
+      if (user?.wallet_address) {
+        const hederaAccountId = await getUserHederaAccountId(user.wallet_address);
+        setUserHederaAccountId(hederaAccountId);
+        
+        if (hederaAccountId) {
+          const balance = await getUserTokenBalance(hederaAccountId);
+          setUserTokenBalance(balance);
+        }
+      }
+    };
+
+    loadUserHederaInfo();
+  }, [user?.wallet_address]);
+
+  // Helper functions for Hedera integration
+  const getUserHederaAccountId = async (evmAddress: string): Promise<string | null> => {
+    const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+    const mirrorNodeUrl = network === 'mainnet' 
+      ? 'https://mainnet.mirrornode.hedera.com' 
+      : 'https://testnet.mirrornode.hedera.com';
+      
+    try {
+      const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${evmAddress}`);
+      const data = await response.json();
+      
+      if (data && data.account) {
+        return data.account; // Returns "0.0.XXXXXX" format directly
+      }
+      return null;
+    } catch (error) {
+      console.error('Error converting EVM address to Hedera Account ID:', error);
+      return null;
+    }
+  };
+
+  const getUserTokenBalance = async (hederaAccountId: string): Promise<number> => {
+    const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+    const mirrorNodeUrl = network === 'mainnet' 
+      ? 'https://mainnet.mirrornode.hedera.com' 
+      : 'https://testnet.mirrornode.hedera.com';
+    
+    const tokenId = '0.0.6503424';
+      
+    try {
+      const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${hederaAccountId}/tokens?token.id=${tokenId}`);
+      const data = await response.json();
+      
+      if (data.tokens && data.tokens.length > 0) {
+        return parseInt(data.tokens[0].balance) || 0;
+      }
+      return 0;
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      return 0;
+    }
+  };
+
+  const handleRetireCredits = async () => {
+    if (!user || !certificate || !userHederaAccountId) {
+      toast({
+        title: "Error",
+        description: "Missing required information for retirement",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (retirementAmount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid retirement amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (userTokenBalance !== null && retirementAmount > userTokenBalance) {
+      toast({
+        title: "Insufficient Balance",
+        description: `You only have ${userTokenBalance} CO2e credits available`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await retireCarbonCredits.mutateAsync({
+        certificateSupabaseId: certificate.id,
+        amount: retirementAmount,
+        ghgCertificateId: certificate.certificate_id,
+        userEvmAddress: user.wallet_address!,
+      });
+
+      toast({
+        title: "Retirement Initiated!",
+        description: (
+          <div className="space-y-2">
+            <p>Successfully initiated retirement of {retirementAmount} CO2e credits</p>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="w-full"
+            >
+              <a href={getHashScanUrl(result.hedera_tx_id!)} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View on HashScan
+              </a>
+            </Button>
+          </div>
+        ),
+      });
+
+      setShowRetirementForm(false);
+      setRetirementAmount(0);
+
+      // Refresh user's token balance
+      if (userHederaAccountId) {
+        const newBalance = await getUserTokenBalance(userHederaAccountId);
+        setUserTokenBalance(newBalance);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Retirement Failed",
+        description: error.message || "Failed to retire carbon credits",
+        variant: "destructive",
+      });
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -112,6 +269,23 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                   <p className="text-2xl font-bold text-primary">
                     {certificate.total_emissions.toLocaleString()} kg CO₂e
                   </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Offset Status</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={
+                      certificate.offset_status === 'fully_offset' ? 'default' :
+                      certificate.offset_status === 'partially_offset' ? 'secondary' : 'outline'
+                    }>
+                      {certificate.offset_status === 'fully_offset' ? 'Fully Offset' :
+                       certificate.offset_status === 'partially_offset' ? 'Partially Offset' : 'Not Offset'}
+                    </Badge>
+                    {certificate.offset_amount > 0 && (
+                      <span className="text-sm text-muted-foreground">
+                        ({certificate.offset_amount} kg CO₂e retired)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Issue Date</label>
@@ -243,6 +417,256 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Carbon Credit Retirement Section */}
+      {user && userHederaAccountId && (
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+              <Target className="h-5 w-5" />
+              Offset This Certificate
+            </CardTitle>
+            <CardDescription>
+              Retire carbon credits to offset the emissions in this certificate
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">Certificate Emissions</p>
+                <p className="text-xl font-bold">{certificate.total_emissions.toLocaleString()} kg CO₂e</p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">Already Offset</p>
+                <p className="text-xl font-bold text-green-600">
+                  {certificate.offset_amount || 0} kg CO₂e
+                </p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">Your CO2e Balance</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {userTokenBalance !== null ? userTokenBalance.toLocaleString() : '...'} credits
+                </p>
+              </div>
+            </div>
+
+            {!showRetirementForm ? (
+              <div className="text-center">
+                <Button 
+                  onClick={() => setShowRetirementForm(true)}
+                  disabled={!userTokenBalance || userTokenBalance === 0}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Leaf className="h-4 w-4 mr-2" />
+                  Retire Carbon Credits
+                </Button>
+                {(!userTokenBalance || userTokenBalance === 0) && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    You need CO2e credits to offset emissions. Visit the marketplace to purchase credits.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="retirement-amount">Amount to Retire (kg CO₂e)</Label>
+                  <Input
+                    id="retirement-amount"
+                    type="number"
+                    min="1"
+                    max={Math.min(
+                      userTokenBalance || 0,
+                      certificate.total_emissions - (certificate.offset_amount || 0)
+                    )}
+                    value={retirementAmount || ''}
+                    onChange={(e) => setRetirementAmount(parseInt(e.target.value) || 0)}
+                    placeholder="Enter amount to retire"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum: {Math.min(
+                      userTokenBalance || 0,
+                      certificate.total_emissions - (certificate.offset_amount || 0)
+                    ).toLocaleString()} kg CO₂e
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleRetireCredits}
+                    disabled={retireCarbonCredits.isPending || retirementAmount <= 0}
+                    className="flex-1"
+                  >
+                    {retireCarbonCredits.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Retiring Credits...
+                      </>
+                    ) : (
+                      <>
+                        <Target className="h-4 w-4 mr-2" />
+                        Retire {retirementAmount} Credits
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowRetirementForm(false);
+                      setRetirementAmount(0);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <p className="font-medium">Retirement Process:</p>
+                      <ul className="text-sm space-y-1">
+                        <li>1. Intent logged to smart contract</li>
+                        <li>2. Tokens burned from your account</li>
+                        <li>3. Retirement recorded on HCS</li>
+                        <li>4. Certificate offset status updated</li>
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Retirement History Section */}
+      {certificate && retirementTransactions && retirementTransactions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              Retirement History
+            </CardTitle>
+            <CardDescription>
+              Complete history of carbon credit retirements for this certificate
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {retirementTransactions.map((transaction, index) => (
+                <div key={transaction.id} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 font-bold text-sm">
+                        #{index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-lg">{transaction.amount} CO2e Credits Retired</h4>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>{format(new Date(transaction.created_at), 'PPP p')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      Completed
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3 text-sm">
+                    <div>
+                      <label className="text-muted-foreground">Amount Retired:</label>
+                      <p className="font-medium text-green-600">{transaction.amount} kg CO₂e</p>
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground">Status:</label>
+                      <p className="font-medium text-green-600">Successfully Retired</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h5 className="font-medium mb-3">Blockchain Verification Links</h5>
+                    <div className="grid gap-2 md:grid-cols-3">
+                      {/* Smart Contract Transaction */}
+                      {transaction.blockchain_tx && (
+                        <Button variant="outline" size="sm" asChild className="justify-start">
+                          <a href={getHashScanUrl(transaction.blockchain_tx)} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Smart Contract Call
+                          </a>
+                        </Button>
+                      )}
+                      
+                      {/* Token Burn Transaction */}
+                      {transaction.hedera_tx_id && (
+                        <Button variant="outline" size="sm" asChild className="justify-start">
+                          <a href={getHashScanUrl(transaction.hedera_tx_id)} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Token Burn
+                          </a>
+                        </Button>
+                      )}
+                      
+                      {/* HCS Message Transaction */}
+                      {transaction.retirement_hcs_message_id && (
+                        <Button variant="outline" size="sm" asChild className="justify-start">
+                          <a href={getHashScanUrl(transaction.retirement_hcs_message_id)} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            HCS Audit Log
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="grid gap-3 md:grid-cols-2 text-xs text-muted-foreground">
+                      <div>
+                        <span>Transaction ID: </span>
+                        <span className="font-mono">{transaction.id.substring(0, 8)}...</span>
+                      </div>
+                      <div>
+                        <span>Processed: </span>
+                        <span>{format(new Date(transaction.created_at), 'MMM dd, yyyy')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary */}
+            <div className="mt-6 pt-6 border-t">
+              <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg">
+                <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Retirement Summary</h4>
+                <div className="grid gap-4 md:grid-cols-3 text-sm">
+                  <div>
+                    <span className="text-green-700 dark:text-green-300">Total Retirements:</span>
+                    <p className="font-bold text-green-800 dark:text-green-200">
+                      {retirementTransactions.length} transactions
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-green-700 dark:text-green-300">Total Amount Retired:</span>
+                    <p className="font-bold text-green-800 dark:text-green-200">
+                      {retirementTransactions.reduce((sum, t) => sum + t.amount, 0)} kg CO₂e
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-green-700 dark:text-green-300">Latest Retirement:</span>
+                    <p className="font-bold text-green-800 dark:text-green-200">
+                      {retirementTransactions.length > 0 
+                        ? format(new Date(retirementTransactions[0].created_at), 'MMM dd, yyyy')
+                        : 'None'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Emissions Breakdown */}
       <Card>
@@ -444,6 +868,12 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
         <Button variant="outline">
           <Share2 className="h-4 w-4 mr-2" />
           Share Certificate
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/marketplace">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Buy Carbon Credits
+          </Link>
         </Button>
         {certificate.blockchain_tx && (
           <Button variant="outline" asChild>

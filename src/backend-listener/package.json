@@ -1,0 +1,17 @@
+{
+    "name": "hedera-backend-listener",
+    "version": "1.0.0",
+    "description": "Backend service for listening to Hedera smart contract events",
+    "main": "index.ts",
+    "scripts": {
+      "start": "tsx index.ts",
+      "dev": "tsx watch index.ts"
+    },
+    "dependencies": {
+      "@hashgraph/sdk": "^2.69.0",
+      "ethers": "^6.15.0",
+      "@supabase/supabase-js": "^2.38.4",
+      "dotenv": "^16.4.5",
+      "tsx": "^4.6.0"
+    }
+  }

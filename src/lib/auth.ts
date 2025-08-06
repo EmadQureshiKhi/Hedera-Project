@@ -3,6 +3,7 @@
 import { supabase } from './supabase';
 import { User } from './supabase';
 import { EthereumProvider } from '@walletconnect/ethereum-provider';
+import { apiClient } from './api-client';
 
 // Authentication types
 export type AuthMethod = 'email' | 'wallet' | 'google';
@@ -27,6 +28,31 @@ class AuthService {
   private currentUser: AuthUser | null = null;
   private listeners: ((user: AuthUser | null) => void)[] = [];
   private pendingWalletConnection: { address: string; signature: string; message: string | Uint8Array } | null = null;
+
+  // Auto-fetch and update Hedera Account ID for users who have wallet but missing Hedera ID
+  async ensureHederaAccountId(user: AuthUser): Promise<AuthUser> {
+    // Skip if user doesn't have a wallet address or already has Hedera Account ID
+    if (!user.wallet_address || user.hedera_account_id) {
+      return user;
+    }
+
+    try {
+      console.log(`🔍 Fetching missing Hedera Account ID for wallet: ${user.wallet_address}`);
+      const hederaAccountId = await this.getHederaAccountIdFromEvmAddress(user.wallet_address);
+      
+      if (hederaAccountId) {
+        console.log(`✅ Found Hedera Account ID: ${hederaAccountId}`);
+        const updatedUser = await this._updateUserWalletAndHederaId(user.id, user.wallet_address, hederaAccountId);
+        return updatedUser;
+      } else {
+        console.log(`❌ No Hedera Account ID found for wallet: ${user.wallet_address}`);
+        return user;
+      }
+    } catch (error) {
+      console.error('Error fetching Hedera Account ID:', error);
+      return user;
+    }
+  }
 
   // Email Authentication
   async signUpWithEmail(email: string, password: string, displayName?: string): Promise<AuthUser> {
@@ -327,8 +353,11 @@ class AuthService {
       }
     }
 
-    // Update user with wallet address
-    const updatedUser = await this.updateUserWallet(this.currentUser.id, walletAddress);
+    // Fetch Hedera Account ID for the wallet address
+    const hederaAccountId = await this.getHederaAccountIdFromEvmAddress(walletAddress);
+    
+    // Update user with wallet address and Hedera Account ID
+    const updatedUser = await this._updateUserWalletAndHederaId(this.currentUser.id, walletAddress, hederaAccountId);
     this._setInternalCurrentUser(updatedUser);
     return updatedUser;
   }
@@ -363,13 +392,35 @@ class AuthService {
     throw new Error('WalletConnect integration requires additional setup');
   }
 
+  // Convert EVM address to Hedera Account ID using Mirror Node
+  private async getHederaAccountIdFromEvmAddress(evmAddress: string): Promise<string | null> {
+    const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+    const mirrorNodeUrl = network === 'mainnet' 
+      ? 'https://mainnet.mirrornode.hedera.com' 
+      : 'https://testnet.mirrornode.hedera.com';
+      
+    try {
+      const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${evmAddress}`);
+      const data = await response.json();
+      
+      if (data.account) {
+        return data.account; // Returns "0.0.XXXXXX" format directly
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error converting EVM address ${evmAddress} to Hedera Account ID:`, error);
+      return null;
+    }
+  }
+
   // Update user wallet address
-  private async updateUserWallet(userId: string, walletAddress: string): Promise<AuthUser> {
+  private async _updateUserWalletAndHederaId(userId: string, walletAddress: string, hederaAccountId: string | null): Promise<AuthUser> {
     if (this.isDemoMode()) {
       const users = this.getDemoUsers();
       const userIndex = users.findIndex(u => u.id === userId);
       if (userIndex >= 0) {
         users[userIndex].wallet_address = walletAddress;
+        users[userIndex].hedera_account_id = hederaAccountId;
         users[userIndex].updated_at = new Date().toISOString();
         localStorage.setItem('demo_users', JSON.stringify(users));
         return users[userIndex];
@@ -381,6 +432,7 @@ class AuthService {
       .from('users')
       .update({ 
         wallet_address: walletAddress,
+        hedera_account_id: hederaAccountId,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
@@ -556,11 +608,21 @@ class AuthService {
 
   // Wallet signature verification
   private async authenticateWallet(walletAddress: string, signature: string, message: string | Uint8Array): Promise<AuthUser> {
+    // Always fetch the Hedera Account ID for this wallet address
+    const hederaAccountId = await apiClient.getHederaAccountIdFromEvmAddress(walletAddress);
+    console.log(`🔍 Fetched Hedera Account ID for ${walletAddress}:`, hederaAccountId);
+
     // Find existing user profile based on wallet address
     let user = await this.getUserByWallet(walletAddress);
     
     if (user) {
-      // User exists with this wallet - check if they have email linked
+      // User exists with this wallet - ensure Hedera Account ID is up to date
+      if (!user.hedera_account_id || user.hedera_account_id !== hederaAccountId) {
+        console.log(`🔄 Updating Hedera Account ID for existing user ${user.id}`);
+        user = await this._updateUserWalletAndHederaId(user.id, walletAddress, hederaAccountId);
+      }
+      
+      // Check if they have email linked
       if (user.email) {
         // User has email linked - automatically sign them in
         if (!this.isDemoMode()) {
@@ -603,8 +665,21 @@ class AuthService {
       }
       // User exists but no email - store for linking
       this.pendingWalletConnection = { address: walletAddress, signature, message };
+      this._setInternalCurrentUser(user);
+      return user;
     } else {
-      // No user found - store for linking after email authentication
+      // No user found with this wallet - check if there's an active auth session
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        // User is logged in via email/Google but doesn't have this wallet linked
+        console.log(`🔗 Linking wallet ${walletAddress} to authenticated user ${authUser.id}`);
+        user = await this._updateUserWalletAndHederaId(authUser.id, walletAddress, hederaAccountId);
+        this._setInternalCurrentUser(user);
+        return user;
+      }
+      
+      // No user found and no active auth session - store for linking after email authentication
       this.pendingWalletConnection = { address: walletAddress, signature, message };
     }
 
@@ -612,6 +687,7 @@ class AuthService {
     return {
       id: 'pending-wallet-user',
       wallet_address: walletAddress,
+      hedera_account_id: hederaAccountId,
       email: null,
       auth_method: 'wallet',
       display_name: 'Wallet User',
@@ -759,12 +835,16 @@ class AuthService {
     
     // Link wallet if not already linked
     if (!user.wallet_address) {
-      user = await this.updateUserWallet(user.id, walletConnection.address);
+      // Fetch Hedera Account ID for the wallet address
+      const hederaAccountId = await this.getHederaAccountIdFromEvmAddress(walletConnection.address);
+      user = await this._updateUserWalletAndHederaId(user.id, walletConnection.address, hederaAccountId);
     } else if (existingWalletUser && !existingWalletUser.email) {
       // There's a wallet-only user that needs to be merged
       // Delete the wallet-only user and update this email user with the wallet
       await this.deleteUser(existingWalletUser.id);
-      user = await this.updateUserWallet(user.id, walletConnection.address);
+      // Fetch Hedera Account ID for the wallet address
+      const hederaAccountId = await this.getHederaAccountIdFromEvmAddress(walletConnection.address);
+      user = await this._updateUserWalletAndHederaId(user.id, walletConnection.address, hederaAccountId);
     }
 
     this.pendingWalletConnection = null;
@@ -889,8 +969,14 @@ class AuthService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const profile = await this.getUserProfile(user.id);
-    this._setInternalCurrentUser(profile);
+    let profile = await this.getUserProfile(user.id);
+    
+    // Ensure Hedera Account ID is fetched if missing
+    profile = await this.ensureHederaAccountId(profile);
+    
+    // Ensure Hedera Account ID is fetched if missing
+    const profileWithHedera = await this.ensureHederaAccountId(profile);
+    this._setInternalCurrentUser(profileWithHedera);
     return profile;
   }
 
@@ -976,6 +1062,7 @@ class AuthService {
       google_id: userData.google_id,
       avatar_url: userData.avatar_url,
       display_name: userData.display_name,
+      hedera_account_id: userData.hedera_account_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

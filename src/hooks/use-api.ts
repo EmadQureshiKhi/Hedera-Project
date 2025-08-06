@@ -126,3 +126,56 @@ export function useCreateTransaction(userId?: string) {
     },
   });
 }
+
+// Purchase carbon credits hooks
+export function usePurchaseCarbonCredits(userId?: string) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
+  return useMutation({
+    mutationFn: ({ creditId, amount, userHederaAccountId }: {
+      creditId: string; 
+      amount: number; 
+      userHederaAccountId: string; 
+    }) => 
+      targetUserId ? apiClient.purchaseCarbonCredits(targetUserId, creditId, amount, userHederaAccountId) : Promise.reject(new Error('No user ID available')),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['carbon-credits'] });
+    },
+  });
+}
+
+// Retire carbon credits hooks
+export function useRetireCarbonCredits(userId?: string) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
+  return useMutation({
+    mutationFn: ({ certificateSupabaseId, amount, ghgCertificateId, userEvmAddress }: {
+      certificateSupabaseId: string;
+      amount: number; 
+      ghgCertificateId: string;
+      userEvmAddress: string;
+    }) => 
+      targetUserId ? apiClient.retireCarbonCredits(targetUserId, certificateSupabaseId, amount, ghgCertificateId, userEvmAddress) : Promise.reject(new Error('No user ID available')),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
+      queryClient.invalidateQueries({ queryKey: ['certificate-retirement-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+}
+
+// Certificate retirement transactions hooks
+export function useCertificateRetirementTransactions(certificateId?: string) {
+  return useQuery({
+    queryKey: ['certificate-retirement-transactions', certificateId],
+    queryFn: () => certificateId ? apiClient.getCertificateRetirementTransactions(certificateId) : Promise.resolve([]),
+    enabled: !!certificateId,
+  });
+}

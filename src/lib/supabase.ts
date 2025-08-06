@@ -11,6 +11,7 @@ export interface User {
   id: string;
   wallet_address: string | null; // Allow null wallet addresses
   email?: string;
+  hedera_account_id?: string; // Add Hedera Account ID field
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,8 @@ export interface Certificate {
   hcs_topic_id?: string;
   hcs_message_id?: string;
   data_hash: string;
+  offset_status?: string;
+  offset_amount?: number;
   created_at: string;
 }
 

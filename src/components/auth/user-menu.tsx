@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -14,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { AuthModal } from './auth-modal';
 import { useAuth } from '@/hooks/use-auth';
 import { 
+  RefreshCw,
   User, 
   Wallet, 
   Copy, 
@@ -31,6 +33,7 @@ export function UserMenu() {
   const [copied, setCopied] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup' | 'wallet' | 'link-email'>('wallet');
+  const [isRefreshingHedera, setIsRefreshingHedera] = useState(false);
 
   if (!user) return null;
 
@@ -50,6 +53,26 @@ export function UserMenu() {
   const handleLinkEmail = () => {
     setAuthModalTab('link-email');
     setShowAuthModal(true);
+  };
+
+  const refreshHederaAccountId = async () => {
+    if (!user?.wallet_address || isRefreshingHedera) return;
+    
+    setIsRefreshingHedera(true);
+    try {
+      // Import authService dynamically to avoid circular imports
+      const { authService } = await import('@/lib/auth');
+      const updatedUser = await authService.ensureHederaAccountId(user);
+      
+      if (updatedUser.hedera_account_id && updatedUser.hedera_account_id !== user.hedera_account_id) {
+        // Force a refresh of the user data
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error refreshing Hedera Account ID:', error);
+    } finally {
+      setIsRefreshingHedera(false);
+    }
   };
 
   const getInitials = (name?: string) => {
@@ -158,6 +181,18 @@ export function UserMenu() {
                 </Button>
               )}
             </div>
+            {user.wallet_address && !user.hedera_account_id && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshHederaAccountId}
+                disabled={isRefreshingHedera}
+                className="h-6 px-2 text-xs"
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshingHedera ? 'animate-spin' : ''}`} />
+                Fetch Hedera ID
+              </Button>
+            )}
             <p className="text-xs text-muted-foreground font-mono mt-1">
               {user.wallet_address ? (
                 `${user.wallet_address.substring(0, 16)}...`

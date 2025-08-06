@@ -66,6 +66,12 @@ export const getHashScanUrl = (txId: string): string => {
   return `${hashScanBaseUrl}${formattedTxId}`;
 };
 
+// Get HashScan URL for an account
+export const getHashScanAccountUrl = (accountId: string): string => {
+const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+return `https://hashscan.io/${network}/account/${accountId}`;
+};
+
 // --- Hedera Consensus Service (HCS) Functions ---
 
 // Function to create a new HCS topic (run once per topic needed)

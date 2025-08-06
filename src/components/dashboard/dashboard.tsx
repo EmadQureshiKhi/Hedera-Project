@@ -8,6 +8,7 @@ import { StatsCards } from './stats-cards';
 import { EmissionsChart } from './emissions-chart';
 import { RecentActivity } from './recent-activity';
 import { QuickActions } from './quick-actions';
+import { TokenBalanceCard } from './token-balance-card';
 import { useDashboardStats } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { Leaf, TrendingDown, Award, ShoppingCart } from 'lucide-react';
@@ -99,6 +100,9 @@ export function Dashboard() {
 
       {/* Stats Cards */}
       <StatsCards data={dashboardData} />
+
+      {/* Token Balance Card */}
+      {user && user.wallet_address && <TokenBalanceCard />}
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">

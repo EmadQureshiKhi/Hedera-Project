@@ -8,12 +8,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "api": "tsx watch src/api/server.ts"
+    "api": "tsx watch src/api/server.ts",
+    "listener": "tsx watch src/backend-listener/index.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.5.0",
     "@hashgraph/sdk": "^2.69.0",
     "@hookform/resolvers": "^3.3.2",
+    "@openzeppelin/contracts": "^5.4.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.0.4",
@@ -36,6 +38,7 @@
     "clsx": "^2.0.0",
     "crypto-js": "^4.2.0",
     "date-fns": "^2.30.0",
+    "ethers": "^6.15.0",
     "fastify": "^4.24.3",
     "framer-motion": "^10.16.5",
     "hashconnect": "^3.0.13",
@@ -58,6 +61,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@types/crypto-js": "^4.2.1",
     "@types/node": "^20.9.0",
     "@types/papaparse": "^5.3.14",
@@ -69,9 +73,23 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
+    "hardhat": "^2.26.2",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0"
-  }
+  },
+  "description": "",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmadQureshiKhi/Hedera-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmadQureshiKhi/Hedera-Project/issues"
+  },
+  "homepage": "https://github.com/EmadQureshiKhi/Hedera-Project#readme"
 }
