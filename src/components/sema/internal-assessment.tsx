@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +27,9 @@ import {
   Grid3X3
 } from 'lucide-react';
 
+// Import your topic type here if needed
+// import type { SemaInternalTopic } from '@/types/sema';
+
 export default function InternalAssessment() {
   const { 
     activeClient, 
@@ -40,7 +42,10 @@ export default function InternalAssessment() {
   } = useSema();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState(null);
+
+  // FIX: Explicitly type editingTopic
+  const [editingTopic, setEditingTopic] = useState<any | null>(null); // <-- Replace 'any' with 'SemaInternalTopic' if you have the type
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -82,7 +87,8 @@ export default function InternalAssessment() {
     setIsLoading(true);
     try {
       if (editingTopic) {
-        await updateInternalTopic(editingTopic.id, formData);
+        // FIX: Use non-null assertion
+        await updateInternalTopic(editingTopic!.id, formData);
 
         toast({
           title: "Topic Updated",
