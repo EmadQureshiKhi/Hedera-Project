@@ -22,15 +22,16 @@ import {
   Loader2
 } from 'lucide-react';
 
+// FIX: Import CalculationResult type
+import type { CalculationResult } from '@/lib/emissions-calculator';
+
 type Step = 'upload' | 'preview' | 'calculate' | 'certificate';
 
+// FIX: Use CalculationResult for calculations
 interface UploadData {
   file?: File;
   data?: any[];
-  calculations?: {
-    totalEmissions: number;
-    breakdown: Record<string, number>;
-  };
+  calculations?: CalculationResult;
   emissionDataId?: string;
   certificate?: {
     id: string;
@@ -74,7 +75,7 @@ export function UploadWizard() {
     handleNext();
   };
 
-  const handleCalculations = (calculations: any, emissionDataId?: string) => {
+  const handleCalculations = (calculations: CalculationResult, emissionDataId?: string) => {
     // Just store the calculations, don't navigate yet
     setUploadData(prev => ({ ...prev, calculations, emissionDataId }));
   };
@@ -109,7 +110,7 @@ export function UploadWizard() {
       
       let errorMessage = 'Unknown error occurred';
       if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = error.message as string;
+        errorMessage = (error as any).message as string;
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
