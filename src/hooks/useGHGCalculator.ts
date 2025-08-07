@@ -242,12 +242,20 @@ export const useGHGCalculator = () => {
   const getCurrentEmissionFactor = (): number => {
     try {
       if (currentCalculation.scope === 'Scope 1') {
-        const factor = emissionFactors[currentCalculation.scope]?.[currentCalculation.category]?.[currentCalculation.fuelCategory]?.[currentCalculation.fuelType]?.factor;
+        const factor = emissionFactors['Scope 1']
+          ?. [currentCalculation.category]
+          ?. [currentCalculation.fuelCategory]
+          ?. [currentCalculation.fuelType]
+          ?. factor;
         return factor || 0;
-      } else {
-        const factor = emissionFactors[currentCalculation.scope]?.[currentCalculation.fuelCategory]?.[currentCalculation.fuelType]?.factor;
+      } else if (currentCalculation.scope === 'Scope 2') {
+        const factor = emissionFactors['Scope 2']
+          ?. [currentCalculation.fuelCategory]
+          ?. [currentCalculation.fuelType]
+          ?. factor;
         return factor || 0;
       }
+      return 0;
     } catch (error) {
       console.error('Error getting emission factor:', error);
       return 0;
