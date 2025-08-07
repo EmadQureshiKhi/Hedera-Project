@@ -68,15 +68,15 @@ export default function ReportingDashboard() {
     } else {
       // Merge data if topic exists in both assessments
       if (topic.source === 'external' && existing.source === 'internal') {
-        existing.external_score = topic.average_score;
-        existing.external_responses = topic.response_count;
-        existing.gri_code = topic.gri_code;
-        existing.source = 'both';
+        (existing as any).external_score = (topic as any).average_score;
+        (existing as any).external_responses = (topic as any).response_count;
+        (existing as any).gri_code = (topic as any).gri_code;
+        (existing as any).source = 'both';
       } else if (topic.source === 'internal' && existing.source === 'external') {
-        existing.internal_score = topic.significance;
-        existing.severity = topic.severity;
-        existing.likelihood = topic.likelihood;
-        existing.source = 'both';
+        (existing as any).internal_score = (topic as any).significance;
+        (existing as any).severity = (topic as any).severity;
+        (existing as any).likelihood = (topic as any).likelihood;
+        (existing as any).source = 'both';
       }
     }
     return acc;
