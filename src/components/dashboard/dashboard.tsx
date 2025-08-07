@@ -281,7 +281,7 @@ export function Dashboard() {
             </p>
           </div>
         )}
-        <StatsCards data={isAuthenticated ? dashboardData : staticStatsData} />
+        <StatsCards data={isAuthenticated ? (dashboardData ?? staticStatsData) : staticStatsData} />
       </div>
 
       {/* Token Balance Card */}
