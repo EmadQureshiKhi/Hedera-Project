@@ -34,6 +34,23 @@ import {
   Shield
 } from 'lucide-react';
 
+// --- Add this type for color keys ---
+type IconColorKey = 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'red' | 'yellow' | 'pink' | 'cyan' | 'amber';
+
+// --- Use this for icon color classes ---
+const iconColorClasses: Record<IconColorKey, string> = {
+  blue: 'bg-blue-600 text-white',
+  green: 'bg-green-600 text-white',
+  purple: 'bg-purple-600 text-white',
+  orange: 'bg-orange-600 text-white',
+  teal: 'bg-teal-600 text-white',
+  red: 'bg-red-600 text-white',
+  yellow: 'bg-yellow-600 text-white',
+  pink: 'bg-pink-600 text-white',
+  cyan: 'bg-cyan-600 text-white',
+  amber: 'bg-amber-600 text-white'
+};
+
 const STAKEHOLDER_TYPES = [
   'Employees',
   'Customers',
@@ -46,6 +63,126 @@ const STAKEHOLDER_TYPES = [
   'Industry Associations',
   'Competitors',
   'Other'
+];
+
+// --- Type your stakeholder cards array for safety ---
+const stakeholderCards: {
+  id: string;
+  name: string;
+  subtitle: string;
+  category: string;
+  description: string;
+  color: IconColorKey;
+  icon: React.ComponentType<any>;
+}[] = [
+  {
+    id: '#01',
+    name: 'Employees',
+    subtitle: 'Shareholders and other Investors',
+    category: 'Internal',
+    description: 'As partial owners, they provide guidance and decisions around all key dimensions of an organization\'s activities, including ESG. Their interests and concerns are of paramount importance since they can influence business decisions, strategic direction, funding, and investment, and demand accountability from organizational stakeholders.',
+    color: 'blue',
+    icon: Users
+  },
+  {
+    id: '#02',
+    name: 'Business Partners',
+    subtitle: 'Business Partners',
+    category: 'External',
+    description: 'These are entities with which the organization has some level of direct and formal engagement for the purpose of meeting its business objectives, and may include lenders, insurers, industry associations, networks & memberships, B2B customers, or JV partners.',
+    color: 'green',
+    icon: Building
+  },
+  {
+    id: '#03',
+    name: 'Civil Society Organizations',
+    subtitle: 'Civil Society Organizations',
+    category: 'External',
+    description: 'They are key partners in an CSR initiatives and may have a role in deciding the funds allocations and project implementation; they also impact overall brand image as they influence other stakeholders through media, publications, lobbying, etc. Includes media, intergovernmental organizations, multilateral organizations.',
+    color: 'purple',
+    icon: Heart
+  },
+  {
+    id: '#04',
+    name: 'Customers',
+    subtitle: 'Consumers',
+    category: 'External',
+    description: 'Consumers are ultimate users of a product/service even if the company is not directly selling to them. They are becoming increasingly important in informing business decisions and reputational standing.',
+    color: 'orange',
+    icon: ShoppingCart
+  },
+  {
+    id: '#05',
+    name: 'Customers',
+    subtitle: 'Customers',
+    category: 'External',
+    description: 'Customers play one of the most integral roles in impacting strategic decisions, branding, and investment/funds allocation.',
+    color: 'teal',
+    icon: Users
+  },
+  {
+    id: '#06',
+    name: 'Employees and other Workers',
+    subtitle: 'Employees and other Workers',
+    category: 'Internal',
+    description: 'Employees and workers are an indispensable form of human and social capital within an organization, and their rights and preferences influence policy-making to a significant degree.',
+    color: 'blue',
+    icon: Users
+  },
+  {
+    id: '#07',
+    name: 'Government and/or Regulators',
+    subtitle: 'Government and/or Regulators',
+    category: 'External',
+    description: 'Governmental stakeholders play a crucial role in maintaining the legal architecture to ensure an overall level playing field, and policies that are conducive to a thriving and competitive market.',
+    color: 'red',
+    icon: Building
+  },
+  {
+    id: '#08',
+    name: 'Local Communities',
+    subtitle: 'Local Communities',
+    category: 'External',
+    description: 'Local communities provide a crucial contribution to the labor force and towards ensuring uninterrupted plant operations. These also include the communities and regions that might be impacted by company operations and activities due to proximity, and their wellbeing and input need to be taken into account for this reason.',
+    color: 'yellow',
+    icon: MapPin
+  },
+  {
+    id: '#09',
+    name: 'NGOs',
+    subtitle: 'NGOs',
+    category: 'External',
+    description: 'A crucial implementing arm for an organization\'s CSR and community-engagement activities.',
+    color: 'pink',
+    icon: Heart
+  },
+  {
+    id: '#10',
+    name: 'Suppliers',
+    subtitle: 'Suppliers',
+    category: 'External',
+    description: 'As critical components of the value chain, suppliers and fluctuations in their operations might critically impact business decisions and outputs.',
+    color: 'cyan',
+    icon: Truck
+  },
+  {
+    id: '#11',
+    name: 'Trade Unions',
+    subtitle: 'Trade Unions',
+    category: 'External',
+    description: 'Any trade union represents worker interests, and they have substantial influence on the company as they negotiate collective bargaining agreements and can determine worker protection and barriers to hiring new workers.',
+    color: 'amber',
+    icon: Users
+  },
+  {
+    id: '#12',
+    name: 'Vulnerable Groups',
+    subtitle: 'Vulnerable Groups',
+    category: 'External',
+    description: 'This covers any group of individuals that could potentially experience negative impacts as a result of the organization\'s activities more severely than the general population. It is vital to understand how the company\'s operations or value chains impacts different vulnerable groups if it is to work on mitigating those impacts.',
+    color: 'red',
+    icon: Shield
+  }
 ];
 
 export default function StakeholderManagement() {
@@ -639,131 +776,8 @@ export default function StakeholderManagement() {
         {/* Stakeholder Cards Grid */}
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                id: '#01',
-                name: 'Employees',
-                subtitle: 'Shareholders and other Investors',
-                category: 'Internal',
-                description: 'As partial owners, they provide guidance and decisions around all key dimensions of an organization\'s activities, including ESG. Their interests and concerns are of paramount importance since they can influence business decisions, strategic direction, funding, and investment, and demand accountability from organizational stakeholders.',
-                color: 'blue',
-                icon: Users
-              },
-              {
-                id: '#02',
-                name: 'Business Partners',
-                subtitle: 'Business Partners',
-                category: 'External',
-                description: 'These are entities with which the organization has some level of direct and formal engagement for the purpose of meeting its business objectives, and may include lenders, insurers, industry associations, networks & memberships, B2B customers, or JV partners.',
-                color: 'green',
-                icon: Building
-              },
-              {
-                id: '#03',
-                name: 'Civil Society Organizations',
-                subtitle: 'Civil Society Organizations',
-                category: 'External',
-                description: 'They are key partners in an CSR initiatives and may have a role in deciding the funds allocations and project implementation; they also impact overall brand image as they influence other stakeholders through media, publications, lobbying, etc. Includes media, intergovernmental organizations, multilateral organizations.',
-                color: 'purple',
-                icon: Heart
-              },
-              {
-                id: '#04',
-                name: 'Customers',
-                subtitle: 'Consumers',
-                category: 'External',
-                description: 'Consumers are ultimate users of a product/service even if the company is not directly selling to them. They are becoming increasingly important in informing business decisions and reputational standing.',
-                color: 'orange',
-                icon: ShoppingCart
-              },
-              {
-                id: '#05',
-                name: 'Customers',
-                subtitle: 'Customers',
-                category: 'External',
-                description: 'Customers play one of the most integral roles in impacting strategic decisions, branding, and investment/funds allocation.',
-                color: 'teal',
-                icon: Users
-              },
-              {
-                id: '#06',
-                name: 'Employees and other Workers',
-                subtitle: 'Employees and other Workers',
-                category: 'Internal',
-                description: 'Employees and workers are an indispensable form of human and social capital within an organization, and their rights and preferences influence policy-making to a significant degree.',
-                color: 'blue',
-                icon: Users
-              },
-              {
-                id: '#07',
-                name: 'Government and/or Regulators',
-                subtitle: 'Government and/or Regulators',
-                category: 'External',
-                description: 'Governmental stakeholders play a crucial role in maintaining the legal architecture to ensure an overall level playing field, and policies that are conducive to a thriving and competitive market.',
-                color: 'red',
-                icon: Building
-              },
-              {
-                id: '#08',
-                name: 'Local Communities',
-                subtitle: 'Local Communities',
-                category: 'External',
-                description: 'Local communities provide a crucial contribution to the labor force and towards ensuring uninterrupted plant operations. These also include the communities and regions that might be impacted by company operations and activities due to proximity, and their wellbeing and input need to be taken into account for this reason.',
-                color: 'yellow',
-                icon: MapPin
-              },
-              {
-                id: '#09',
-                name: 'NGOs',
-                subtitle: 'NGOs',
-                category: 'External',
-                description: 'A crucial implementing arm for an organization\'s CSR and community-engagement activities.',
-                color: 'pink',
-                icon: Heart
-              },
-              {
-                id: '#10',
-                name: 'Suppliers',
-                subtitle: 'Suppliers',
-                category: 'External',
-                description: 'As critical components of the value chain, suppliers and fluctuations in their operations might critically impact business decisions and outputs.',
-                color: 'cyan',
-                icon: Truck
-              },
-              {
-                id: '#11',
-                name: 'Trade Unions',
-                subtitle: 'Trade Unions',
-                category: 'External',
-                description: 'Any trade union represents worker interests, and they have substantial influence on the company as they negotiate collective bargaining agreements and can determine worker protection and barriers to hiring new workers.',
-                color: 'amber',
-                icon: Users
-              },
-              {
-                id: '#12',
-                name: 'Vulnerable Groups',
-                subtitle: 'Vulnerable Groups',
-                category: 'External',
-                description: 'This covers any group of individuals that could potentially experience negative impacts as a result of the organization\'s activities more severely than the general population. It is vital to understand how the company\'s operations or value chains impacts different vulnerable groups if it is to work on mitigating those impacts.',
-                color: 'red',
-                icon: Shield
-              }
-            ].map((stakeholder, index) => {
+            {stakeholderCards.map((stakeholder, index) => {
               const Icon = stakeholder.icon;
-              
-              const iconColorClasses = {
-                blue: 'bg-blue-600 text-white',
-                green: 'bg-green-600 text-white',
-                purple: 'bg-purple-600 text-white',
-                orange: 'bg-orange-600 text-white',
-                teal: 'bg-teal-600 text-white',
-                red: 'bg-red-600 text-white',
-                yellow: 'bg-yellow-600 text-white',
-                pink: 'bg-pink-600 text-white',
-                cyan: 'bg-cyan-600 text-white',
-                amber: 'bg-amber-600 text-white'
-              };
-
               return (
                 <div key={index} className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 relative overflow-hidden">
                   {/* Colored bottom border */}
