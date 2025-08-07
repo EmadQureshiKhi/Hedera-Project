@@ -68,6 +68,7 @@ export interface CarbonCredit {
   image_url: string;
   created_at: string;
   hedera_token_id?: string;
+  smart_contract_address?: string;
 }
 
 export interface Transaction {
