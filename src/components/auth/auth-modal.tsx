@@ -51,7 +51,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
   const showOnlyLinkEmail = defaultTab === 'link-email';
 
   // Format wallet address for display
-  const formatWalletAddress = (address: string | null) => {
+  const formatWalletAddress = (address: string | null | undefined) => {
     if (!address) return 'Wallet User';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
