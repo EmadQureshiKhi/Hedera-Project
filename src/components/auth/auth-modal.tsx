@@ -24,7 +24,7 @@ import {
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'signin' | 'signup' | 'wallet';
+  defaultTab?: 'signin' | 'signup' | 'wallet' | 'link-email';
 }
 
 // WalletConnect Logo Component (using your provided SVG)
