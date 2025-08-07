@@ -35,7 +35,7 @@ const WalletConnectLogo = ({ className }: { className?: string }) => (
 );
 
 export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup' | 'wallet' | 'link-email'>(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
