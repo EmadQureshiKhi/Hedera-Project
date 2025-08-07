@@ -30,12 +30,18 @@ import {
   Database
 } from 'lucide-react';
 
+// Import your SemaClient type if not already in scope
+// import type { SemaClient } from '@/types/sema'; // <-- Uncomment and adjust path if needed
+
 export default function SemaAdminPanel() {
   const { clients, addClient, updateClient, deleteClient, reloadClients, latestClientHcsTx } = useSema();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
+
+  // FIX: Explicitly type editingClient as SemaClient | null
+  const [editingClient, setEditingClient] = useState<any | null>(null); // <-- Replace 'any' with 'SemaClient' if you have the type
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -81,15 +87,12 @@ export default function SemaAdminPanel() {
       return;
     }
 
-    console.log('Current user:', user);
-    console.log('User ID:', user.id);
-    console.log('Form data:', formData);
-
     setIsLoading(true);
 
     try {
       if (editingClient) {
-        await updateClient(editingClient.id, formData);
+        // FIX: Use non-null assertion for id
+        await updateClient(editingClient!.id, formData);
         toast({
           title: "Client Updated",
           description: `${formData.name} has been updated successfully.`,
@@ -112,12 +115,9 @@ export default function SemaAdminPanel() {
           .single();
 
         if (error) {
-          console.error('Supabase error details:', error);
           throw new Error(`Database error: ${error.message}`);
         }
 
-        console.log('Successfully created client:', data);
-        
         toast({
           title: "Client Added",
           description: `${formData.name} has been added successfully.`,
@@ -128,7 +128,6 @@ export default function SemaAdminPanel() {
       }
       resetForm();
     } catch (error: any) {
-      console.error('Full error object:', error);
       toast({
         title: "Error",
         description: error.message || `Failed to save client. Error: ${JSON.stringify(error)}`,
