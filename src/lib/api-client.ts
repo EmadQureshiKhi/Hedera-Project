@@ -590,7 +590,8 @@ class ApiClient {
     certificateSupabaseId: string, 
     amount: number, 
     ghgCertificateId: string,
-    userEvmAddress: string
+    userEvmAddress: string,
+    userSigner?: ethers.Signer
   ): Promise<Transaction> {
     if (DEMO_MODE) {
       const transaction: Transaction = {
@@ -610,16 +611,26 @@ class ApiClient {
     }
 
     try {
-      // 1. Setup ethers.js provider and contract
-      const rpcUrl = HEDERA_NETWORK === 'mainnet' 
-        ? 'https://mainnet.hashio.io/api' 
-        : 'https://testnet.hashio.io/api';
+      // 1. Setup ethers.js signer - use user's MetaMask if provided, fallback to server key
+      let signer: ethers.Signer;
       
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      if (!HEDERA_EVM_PRIVATE_KEY) {
-        throw new Error('Hedera EVM private key not configured (NEXT_PUBLIC_HEDERA_EVM_PRIVATE_KEY)');
+      if (userSigner) {
+        // Use user's MetaMask signer for client-side signing
+        signer = userSigner;
+        console.log('Using MetaMask signer for transaction');
+      } else {
+        // Fallback to server-side signing (original behavior)
+        const rpcUrl = HEDERA_NETWORK === 'mainnet' 
+          ? 'https://mainnet.hashio.io/api' 
+          : 'https://testnet.hashio.io/api';
+        
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        if (!HEDERA_EVM_PRIVATE_KEY) {
+          throw new Error('Hedera EVM private key not configured (NEXT_PUBLIC_HEDERA_EVM_PRIVATE_KEY)');
+        }
+        signer = new ethers.Wallet(HEDERA_EVM_PRIVATE_KEY, provider);
+        console.log('Using server-side signer for transaction');
       }
-      const signer = new ethers.Wallet(HEDERA_EVM_PRIVATE_KEY, provider);
 
       // CarbonRetirementLog ABI (just the function we need)
       const carbonRetirementLogABI = [
@@ -636,15 +647,29 @@ class ApiClient {
       // 2. Call logRetirementIntent on the smart contract
       console.log(`Calling logRetirementIntent for ${amount} tokens with GHG ID: ${ghgCertificateId}...`);
       
-      const tx = await carbonRetirementLogContract.logRetirementIntent(
-        CO2E_TOKEN_EVM_ADDRESS, // Token EVM address
-        amount,
-        ghgCertificateId,
-        { 
-          gasLimit: 1000000, // Ensure sufficient gas
-          from: userEvmAddress // Specify the user as the caller
-        }
-      );
+      let tx;
+      if (userSigner) {
+        // For MetaMask signing, don't specify 'from' as it's automatically set by the signer
+        tx = await carbonRetirementLogContract.logRetirementIntent(
+          CO2E_TOKEN_EVM_ADDRESS, // Token EVM address
+          amount,
+          ghgCertificateId,
+          { 
+            gasLimit: 1000000 // Ensure sufficient gas
+          }
+        );
+      } else {
+        // For server-side signing, specify the user as the caller
+        tx = await carbonRetirementLogContract.logRetirementIntent(
+          CO2E_TOKEN_EVM_ADDRESS, // Token EVM address
+          amount,
+          ghgCertificateId,
+          { 
+            gasLimit: 1000000, // Ensure sufficient gas
+            from: userEvmAddress // Specify the user as the caller
+          }
+        );
+      }
 
       const receipt = await tx.wait();
       const hederaTxId = receipt.hash;

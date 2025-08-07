@@ -48,7 +48,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
   
   const { data: certificate, isLoading } = useCertificate(certificateId);
   const { data: retirementTransactions, isLoading: isLoadingRetirements } = useCertificateRetirementTransactions(certificate?.id);
-  const { user } = useAuth();
+  const { user, getMetaMaskSigner } = useAuth();
   const { toast } = useToast();
   const retireCarbonCredits = useRetireCarbonCredits(user?.id);
 
@@ -113,10 +113,10 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
   };
 
   const handleRetireCredits = async () => {
-    if (!user || !certificate || !userHederaAccountId) {
+    if (!user || !certificate || !userHederaAccountId || !user.wallet_address) {
       toast({
         title: "Error",
-        description: "Missing required information for retirement",
+        description: "Missing required information for retirement. Please ensure your wallet is connected.",
         variant: "destructive",
       });
       return;
@@ -141,11 +141,29 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
     }
 
     try {
+      // Get MetaMask signer for transaction confirmation
+      const metaMaskSigner = await getMetaMaskSigner();
+      
+      if (!metaMaskSigner) {
+        toast({
+          title: "MetaMask Required",
+          description: "Please ensure MetaMask is connected and unlocked to confirm this transaction.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Transaction Confirmation Required",
+        description: "Please confirm the transaction in your MetaMask wallet to retire carbon credits.",
+      });
+
       const result = await retireCarbonCredits.mutateAsync({
         certificateSupabaseId: certificate.id,
         amount: retirementAmount,
         ghgCertificateId: certificate.certificate_id,
         userEvmAddress: user.wallet_address!,
+        userSigner: metaMaskSigner,
       });
 
       toast({
@@ -177,6 +195,16 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
         setUserTokenBalance(newBalance);
       }
     } catch (error: any) {
+      // Handle MetaMask user rejection
+      if (error.code === 4001 || error.message?.includes('user rejected')) {
+        toast({
+          title: "Transaction Cancelled",
+          description: "You cancelled the transaction in MetaMask.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Retirement Failed",
         description: error.message || "Failed to retire carbon credits",

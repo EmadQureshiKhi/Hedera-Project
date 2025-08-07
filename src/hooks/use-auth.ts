@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { authService, AuthUser, AuthMethod } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { ethers } from 'ethers';
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
 
   useEffect(() => {
     // Initialize auth state
@@ -32,6 +35,50 @@ export function useAuth() {
 
     return unsubscribe;
   }, []);
+
+  // Initialize MetaMask provider and signer when user connects wallet
+  const initializeMetaMaskSigner = async () => {
+    if (!window.ethereum || !user?.wallet_address) {
+      return null;
+    }
+
+    try {
+      const browserProvider = new ethers.BrowserProvider(window.ethereum);
+      const walletSigner = await browserProvider.getSigner();
+      
+      // Verify the signer address matches the connected wallet
+      const signerAddress = await walletSigner.getAddress();
+      if (signerAddress.toLowerCase() !== user.wallet_address.toLowerCase()) {
+        throw new Error('MetaMask account does not match connected wallet');
+      }
+
+      setProvider(browserProvider);
+      setSigner(walletSigner);
+      return walletSigner;
+    } catch (error) {
+      console.error('Failed to initialize MetaMask signer:', error);
+      return null;
+    }
+  };
+
+  // Get MetaMask signer (initialize if needed)
+  const getMetaMaskSigner = async (): Promise<ethers.Signer | null> => {
+    if (signer) {
+      return signer;
+    }
+    
+    return await initializeMetaMaskSigner();
+  };
+
+  // Initialize signer when user changes
+  useEffect(() => {
+    if (user?.wallet_address && window.ethereum) {
+      initializeMetaMaskSigner();
+    } else {
+      setProvider(null);
+      setSigner(null);
+    }
+  }, [user?.wallet_address]);
 
   const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
     setIsLoading(true);
@@ -111,6 +158,9 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated,
+    provider,
+    signer,
+    getMetaMaskSigner,
     signUpWithEmail,
     signInWithEmail,
     signInWithGoogle,

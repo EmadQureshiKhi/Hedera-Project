@@ -155,13 +155,14 @@ export function useRetireCarbonCredits(userId?: string) {
   const targetUserId = userId || user?.id;
   
   return useMutation({
-    mutationFn: ({ certificateSupabaseId, amount, ghgCertificateId, userEvmAddress }: {
+    mutationFn: ({ certificateSupabaseId, amount, ghgCertificateId, userEvmAddress, userSigner }: {
       certificateSupabaseId: string;
       amount: number; 
       ghgCertificateId: string;
       userEvmAddress: string;
+      userSigner?: any;
     }) => 
-      targetUserId ? apiClient.retireCarbonCredits(targetUserId, certificateSupabaseId, amount, ghgCertificateId, userEvmAddress) : Promise.reject(new Error('No user ID available')),
+      targetUserId ? apiClient.retireCarbonCredits(targetUserId, certificateSupabaseId, amount, ghgCertificateId, userEvmAddress, userSigner) : Promise.reject(new Error('No user ID available')),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
