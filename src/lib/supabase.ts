@@ -49,6 +49,7 @@ export interface Certificate {
   offset_status?: string;
   offset_amount?: number;
   created_at: string;
+  emission_details?: EmissionData;
 }
 
 export interface CarbonCredit {
