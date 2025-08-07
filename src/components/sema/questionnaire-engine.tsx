@@ -29,6 +29,9 @@ import {
   BarChart3
 } from 'lucide-react';
 
+// Import your topic type if you have it
+// import type { SemaMaterialTopic } from '@/types/sema';
+
 const GRI_CODES = [
   'GRI 201', 'GRI 202', 'GRI 203', 'GRI 204', 'GRI 205', 'GRI 206', 'GRI 207',
   'GRI 301', 'GRI 302', 'GRI 303', 'GRI 304', 'GRI 305', 'GRI 306', 'GRI 307', 'GRI 308',
@@ -50,7 +53,10 @@ export default function QuestionnaireEngine() {
   } = useSema();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState(null);
+
+  // FIX: Explicitly type editingTopic
+  const [editingTopic, setEditingTopic] = useState<any | null>(null); // Replace 'any' with 'SemaMaterialTopic' if you have the type
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -89,7 +95,8 @@ export default function QuestionnaireEngine() {
     setIsLoading(true);
     try {
       if (editingTopic) {
-        await updateMaterialTopic(editingTopic.id, formData);
+        // Use non-null assertion
+        await updateMaterialTopic(editingTopic!.id, formData);
 
         toast({
           title: "Topic Updated",
