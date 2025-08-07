@@ -102,7 +102,7 @@ export function GHGCertificatePreview({
         blockchain_tx?: string;
         hcs_message_id?: string;
         ipfs_cid?: string;
-        hedera_nft_serial?: string;
+        hedera_nft_serial?: number;
         data_hash?: string;
       } = {
         certificate_id: `GHG-CALC-${Date.now()}`,
