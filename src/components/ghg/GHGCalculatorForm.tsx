@@ -403,16 +403,24 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
 
             {/* Delete Custom Fuel */}
             {fuelTypes.some(ft => {
-            try {
-              if (currentCalculation.scope === 'Scope 1') {
-                return emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory][ft]?.custom;
-              } else {
-                return emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory][ft]?.custom;
+              try {
+                if (currentCalculation.scope === 'Scope 1') {
+                  const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory];
+                  if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && ft in fuelCategoryObj) {
+                    return (fuelCategoryObj as { [fuelType: string]: any })[ft]?.custom;
+                  }
+                  return false;
+                } else {
+                  const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory];
+                  if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && ft in fuelCategoryObj) {
+                    return (fuelCategoryObj as { [fuelType: string]: any })[ft]?.custom;
+                  }
+                  return false;
+                }
+              } catch {
+                return false;
               }
-            } catch {
-              return false;
-            }
-          }) && (
+            }) && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <h5 className="text-sm font-medium text-red-900 mb-2">Delete Custom Fuel</h5>
                 <p className="text-xs text-red-700 mb-2">
@@ -423,9 +431,17 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
                   disabled={!(() => {
                     try {
                       if (currentCalculation.scope === 'Scope 1') {
-                        return emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory][currentCalculation.fuelType]?.custom;
+                        const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory];
+                        if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && currentCalculation.fuelType in fuelCategoryObj) {
+                          return (fuelCategoryObj as { [fuelType: string]: any })[currentCalculation.fuelType]?.custom;
+                        }
+                        return false;
                       } else {
-                        return emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory][currentCalculation.fuelType]?.custom;
+                        const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory];
+                        if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && currentCalculation.fuelType in fuelCategoryObj) {
+                          return (fuelCategoryObj as { [fuelType: string]: any })[currentCalculation.fuelType]?.custom;
+                        }
+                        return false;
                       }
                     } catch {
                       return false;
@@ -437,8 +453,8 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
                   <span>Delete Fuel</span>
                 </button>
               </div>
-          )}
-          </div>
+            )}
+          </div> {/* <-- Closing brace for custom types grid */}
         </div>
 
         {/* Activity Data */}
