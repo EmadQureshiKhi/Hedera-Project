@@ -333,7 +333,7 @@ export default function SampleSizeCalculator() {
                   </div>
                   <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 ml-5">
                     <li>• <strong>Population ≤100:</strong> Uses finite population formula (appropriate for small groups)</li>
-                    <li>• <strong>Population >100:</strong> Uses infinite population formula (standard for large populations)</li>
+                    <li>• <strong>Population &gt;100:</strong> Uses infinite population formula (standard for large populations)</li>
                     <li>• <strong>No population specified:</strong> Uses infinite population formula (conservative estimate)</li>
                   </ul>
                 </div>
@@ -485,15 +485,15 @@ export default function SampleSizeCalculator() {
                 <code className="text-lg font-mono text-blue-600">n = (Z² × p × (1-p)) / E²</code>
               </div>
               <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                Used when population is large (>100) or unknown. Provides conservative estimates suitable for large populations.
+                Used when population is large (&gt;100) or unknown. Provides conservative estimates suitable for large populations.
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-blue-600">Auto-Detection Logic</span>
                 </div>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-xs">
-                  <li>• Population >100: Finite correction</li>
-                  <li>• Population >100: Infinite formula</li>
+                  <li>• Population &gt;100: Finite correction</li>
+                  <li>• Population &gt;100: Infinite formula</li>
                   <li>• No population: Infinite formula (default)</li>
                 </ul>
               </div>
