@@ -45,7 +45,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
   const [retirementAmount, setRetirementAmount] = useState<number>(0);
   const [userTokenBalance, setUserTokenBalance] = useState<number | null>(null);
   const [userHederaAccountId, setUserHederaAccountId] = useState<string | null>(null);
-  
+
   const { data: certificate, isLoading } = useCertificate(certificateId);
   const { data: retirementTransactions, isLoading: isLoadingRetirements } = useCertificateRetirementTransactions(certificate?.id);
   const { user, getMetaMaskSigner } = useAuth();
@@ -58,7 +58,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
       if (user?.wallet_address) {
         const hederaAccountId = await getUserHederaAccountId(user.wallet_address);
         setUserHederaAccountId(hederaAccountId);
-        
+      
         if (hederaAccountId) {
           const balance = await getUserTokenBalance(hederaAccountId);
           setUserTokenBalance(balance);
@@ -75,11 +75,11 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
     const mirrorNodeUrl = network === 'mainnet' 
       ? 'https://mainnet.mirrornode.hedera.com' 
       : 'https://testnet.mirrornode.hedera.com';
-      
+    
     try {
       const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${evmAddress}`);
       const data = await response.json();
-      
+    
       if (data && data.account) {
         return data.account; // Returns "0.0.XXXXXX" format directly
       }
@@ -95,13 +95,13 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
     const mirrorNodeUrl = network === 'mainnet' 
       ? 'https://mainnet.mirrornode.hedera.com' 
       : 'https://testnet.mirrornode.hedera.com';
-    
+  
     const tokenId = '0.0.6503424';
-      
+    
     try {
       const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${hederaAccountId}/tokens?token.id=${tokenId}`);
       const data = await response.json();
-      
+    
       if (data.tokens && data.tokens.length > 0) {
         return parseInt(data.tokens[0].balance) || 0;
       }
@@ -131,10 +131,10 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
       return;
     }
 
-    if (userTokenBalance !== null && retirementAmount > userTokenBalance) {
+    if ((userTokenBalance ?? 0) !== null && retirementAmount > (userTokenBalance ?? 0)) {
       toast({
         title: "Insufficient Balance",
-        description: `You only have ${userTokenBalance} CO2e credits available`,
+        description: `You only have ${(userTokenBalance ?? 0)} CO2e credits available`,
         variant: "destructive",
       });
       return;
@@ -143,7 +143,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
     try {
       // Get MetaMask signer for transaction confirmation
       const metaMaskSigner = await getMetaMaskSigner();
-      
+    
       if (!metaMaskSigner) {
         toast({
           title: "MetaMask Required",
@@ -204,7 +204,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
         });
         return;
       }
-      
+    
       toast({
         title: "Retirement Failed",
         description: error.message || "Failed to retire carbon credits",
@@ -308,9 +308,9 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                       {certificate.offset_status === 'fully_offset' ? 'Fully Offset' :
                        certificate.offset_status === 'partially_offset' ? 'Partially Offset' : 'Not Offset'}
                     </Badge>
-                    {certificate.offset_amount > 0 && (
+                    {(certificate.offset_amount ?? 0) > 0 && (
                       <span className="text-sm text-muted-foreground">
-                        ({certificate.offset_amount} kg CO₂e retired)
+                        ({(certificate.offset_amount ?? 0)} kg CO₂e retired)
                       </span>
                     )}
                   </div>
@@ -467,13 +467,13 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
               <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">Already Offset</p>
                 <p className="text-xl font-bold text-green-600">
-                  {certificate.offset_amount || 0} kg CO₂e
+                  {(certificate.offset_amount ?? 0)} kg CO₂e
                 </p>
               </div>
               <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">Your CO2e Balance</p>
                 <p className="text-xl font-bold text-blue-600">
-                  {userTokenBalance !== null ? userTokenBalance.toLocaleString() : '...'} credits
+                  {(userTokenBalance ?? 0) !== null ? (userTokenBalance ?? 0).toLocaleString() : '...'} credits
                 </p>
               </div>
             </div>
@@ -482,13 +482,13 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
               <div className="text-center">
                 <Button 
                   onClick={() => setShowRetirementForm(true)}
-                  disabled={!userTokenBalance || userTokenBalance === 0}
+                  disabled={!(userTokenBalance ?? 0) || (userTokenBalance ?? 0) === 0}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Leaf className="h-4 w-4 mr-2" />
                   Retire Carbon Credits
                 </Button>
-                {(!userTokenBalance || userTokenBalance === 0) && (
+                {(!(userTokenBalance ?? 0) || (userTokenBalance ?? 0) === 0) && (
                   <p className="text-sm text-muted-foreground mt-2">
                     You need CO2e credits to offset emissions. Visit the marketplace to purchase credits.
                   </p>
@@ -503,8 +503,8 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                     type="number"
                     min="1"
                     max={Math.min(
-                      userTokenBalance || 0,
-                      certificate.total_emissions - (certificate.offset_amount || 0)
+                      (userTokenBalance ?? 0),
+                      certificate.total_emissions - (certificate.offset_amount ?? 0)
                     )}
                     value={retirementAmount || ''}
                     onChange={(e) => setRetirementAmount(parseInt(e.target.value) || 0)}
@@ -512,8 +512,8 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                   />
                   <p className="text-xs text-muted-foreground">
                     Maximum: {Math.min(
-                      userTokenBalance || 0,
-                      certificate.total_emissions - (certificate.offset_amount || 0)
+                      (userTokenBalance ?? 0),
+                      certificate.total_emissions - (certificate.offset_amount ?? 0)
                     ).toLocaleString()} kg CO₂e
                   </p>
                 </div>
@@ -624,7 +624,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                           </a>
                         </Button>
                       )}
-                      
+                    
                       {/* Token Burn Transaction */}
                       {transaction.hedera_tx_id && (
                         <Button variant="outline" size="sm" asChild className="justify-start">
@@ -634,7 +634,7 @@ export function CertificateDetail({ certificateId }: CertificateDetailProps) {
                           </a>
                         </Button>
                       )}
-                      
+                    
                       {/* HCS Message Transaction */}
                       {transaction.retirement_hcs_message_id && (
                         <Button variant="outline" size="sm" asChild className="justify-start">
