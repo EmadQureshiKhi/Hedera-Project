@@ -233,25 +233,29 @@ export function UserMenu() {
           <DropdownMenuSeparator />
           
           {/* Menu Items */}
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled className="opacity-50 cursor-not-allowed">
             <User className="h-4 w-4 mr-2" />
-            Profile Settings
+            <span className="flex-1">Profile Settings</span>
+            <Badge variant="outline" className="text-xs ml-2">Soon</Badge>
           </DropdownMenuItem>
           
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled className="opacity-50 cursor-not-allowed">
             <CreditCard className="h-4 w-4 mr-2" />
-            Billing & Usage
+            <span className="flex-1">Billing & Usage</span>
+            <Badge variant="outline" className="text-xs ml-2">Soon</Badge>
           </DropdownMenuItem>
           
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled className="opacity-50 cursor-not-allowed">
             <Settings className="h-4 w-4 mr-2" />
-            Preferences
+            <span className="flex-1">Preferences</span>
+            <Badge variant="outline" className="text-xs ml-2">Soon</Badge>
           </DropdownMenuItem>
           
           {user.wallet_address && (
-            <DropdownMenuItem>
+            <DropdownMenuItem disabled className="opacity-50 cursor-not-allowed">
               <ExternalLink className="h-4 w-4 mr-2" />
-              View on Explorer
+              <span className="flex-1">View on Explorer</span>
+              <Badge variant="outline" className="text-xs ml-2">Soon</Badge>
             </DropdownMenuItem>
           )}
           

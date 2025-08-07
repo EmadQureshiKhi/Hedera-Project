@@ -46,21 +46,21 @@ export function QuickActions() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {actions.map((action, index) => {
             const Icon = action.icon;
             return (
               <Link key={index} href={action.href}>
                 <Button
                   variant="outline"
-                  className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-muted/50 transition-colors"
+                  className="h-24 w-full p-4 flex flex-col items-center justify-center space-y-2 hover:bg-muted/50 transition-colors"
                 >
                   <div className={`p-2 rounded-lg ${action.color} text-white`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <div className="text-center">
-                    <p className="font-medium text-sm">{action.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="text-center flex-1 flex flex-col justify-center">
+                    <p className="font-medium text-sm leading-tight">{action.title}</p>
+                    <p className="text-xs text-muted-foreground leading-tight">
                       {action.description}
                     </p>
                   </div>

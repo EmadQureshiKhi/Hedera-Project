@@ -59,6 +59,27 @@ export async function getHederaAccountIdFromEvmAddress(evmAddress: string): Prom
     return null;
   }
 }
+export async function getUserTokenBalance(hederaAccountId: string): Promise<number> {
+  const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
+  const mirrorNodeUrl = network === 'mainnet' 
+    ? 'https://mainnet.mirrornode.hedera.com' 
+    : 'https://testnet.mirrornode.hedera.com';
+  
+  const tokenId = '0.0.6503424'; // CO2e token ID
+    
+  try {
+    const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${hederaAccountId}/tokens?token.id=${tokenId}`);
+    const data = await response.json();
+    
+    if (data.tokens && data.tokens.length > 0) {
+      return parseInt(data.tokens[0].balance) || 0;
+    }
+    return 0;
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    return 0;
+  }
+}
 
 class ApiClient {
   private demoData = {
@@ -213,6 +234,11 @@ class ApiClient {
 
     if (error) return null;
     return data;
+  }
+
+  // Add getUserTokenBalance method to ApiClient class
+  async getUserTokenBalance(hederaAccountId: string): Promise<number> {
+    return await getUserTokenBalance(hederaAccountId);
   }
 
   // Emissions Data

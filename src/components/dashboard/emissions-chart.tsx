@@ -43,11 +43,11 @@ export function EmissionsChart({ data }: EmissionsChartProps) {
           Emissions Overview
         </CardTitle>
         <CardDescription>
-          Monthly emissions vs offset credits (kg CO₂e)
+          {data ? 'Your monthly emissions vs offset credits (kg CO₂e)' : 'Sample emissions tracking over time (kg CO₂e)'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
+        <div className="h-[450px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

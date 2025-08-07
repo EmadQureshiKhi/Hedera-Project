@@ -49,7 +49,7 @@ export function Navbar() {
                className="h-12 w-16 object-contain -mt-1"
               />
              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight -ml-3">
-                GreenTrace
+                Green<span className="text-green-800">Trace</span>
               </span>
             </Link>
 

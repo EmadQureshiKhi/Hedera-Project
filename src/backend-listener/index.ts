@@ -260,7 +260,7 @@ async function processRetirementEvent(
 async function startListener() {
   console.log(`👂 Listening for RetirementLogged events from ${CARBON_RETIREMENT_LOG_EVM_ADDRESS}...`);
   
-  let lastTimestamp = Math.floor(Date.now() / 1000) - 3600; // Start 1 hour ago
+  let lastTimestamp = Math.floor(Date.now() / 1000) - 1800; // Start 30 minutes ago (reduced from 1 hour)
   
   setInterval(async () => {
     try {
@@ -276,16 +276,38 @@ async function startListener() {
       if (data.logs && data.logs.length > 0) {
         console.log(`📋 Found ${data.logs.length} new log(s) to process...`);
         
-        for (const log of data.logs) {
+        // Sort logs by consensus_timestamp to ensure proper chronological processing
+        const sortedLogs = data.logs.sort((a, b) => {
+          const timestampA = parseFloat(a.consensus_timestamp || a.timestamp);
+          const timestampB = parseFloat(b.consensus_timestamp || b.timestamp);
+          return timestampA - timestampB;
+        });
+        
+        for (const log of sortedLogs) {
           try {
+            // Use consensus_timestamp if available, fallback to timestamp
+            const logTimestamp = parseFloat(log.consensus_timestamp || log.timestamp);
+            
+            // Skip if this log is not newer than our last processed timestamp
+            if (logTimestamp <= lastTimestamp) {
+              console.log(`⏭️ Skipping log with timestamp ${logTimestamp} (not newer than ${lastTimestamp})`);
+              continue;
+            }
+            
             // Decode the log data using ethers.js ABI decoder
             const decodedLog = iface.parseLog({
               topics: log.topics,
               data: log.data
             });
             
-            console.log(`🔍 Raw log:`, log); // Add this line
-            console.log(`🔍 Decoded log:`, decodedLog); // Add this line
+            // Only log details for RetirementLogged events to reduce noise
+            if (decodedLog && decodedLog.name === 'RetirementLogged') {
+              console.log(`🔍 Processing RetirementLogged event from log:`, {
+                timestamp: logTimestamp,
+                transaction_hash: log.transaction_hash,
+                contract_id: log.contract_id
+              });
+            }
 
             if (decodedLog && decodedLog.name === 'RetirementLogged') {
               const { retiree, tokenAddress, amount, ghgCertificateId } = decodedLog.args;
@@ -296,6 +318,7 @@ async function startListener() {
               console.log(`📊 Amount: ${amount.toString()}`);
               console.log(`📋 GHG ID: ${ghgCertificateId}`);
               console.log(`🔗 Transaction Hash: ${log.transaction_hash}`);
+              console.log(`⏰ Log Timestamp: ${logTimestamp}`);
 
               // Process the event
               await processRetirementEvent(
@@ -306,18 +329,29 @@ async function startListener() {
                 log.transaction_hash
               );
             }
+            
+            // Update lastTimestamp to this log's timestamp + small epsilon
+            // This ensures the next query will only fetch logs newer than this one
+            lastTimestamp = logTimestamp + 0.000000001;
+            
           } catch (decodeError) {
             console.error(`❌ Error decoding log:`, decodeError);
+            // Still update timestamp even if decoding fails to avoid getting stuck
+            const logTimestamp = parseFloat(log.consensus_timestamp || log.timestamp);
+            if (logTimestamp > lastTimestamp) {
+              lastTimestamp = logTimestamp + 0.000000001;
+            }
           }
-          
-          // Update last processed timestamp
-          lastTimestamp = parseFloat(log.timestamp) + 0.000000001;
         }
+        
+        console.log(`📊 Updated lastTimestamp to: ${lastTimestamp}`);
+      } else {
+        console.log(`📋 No new logs found since timestamp: ${lastTimestamp}`);
       }
     } catch (error) {
       console.error('❌ Error fetching Mirror Node logs:', error);
     }
-  }, 5000); // Poll every 5 seconds
+  }, 10000); // Poll every 10 seconds (reduced frequency to be more efficient)
 }
 
 // Graceful shutdown handling

@@ -21,39 +21,30 @@ interface StatsData {
 }
 
 interface StatsCardsProps {
-  data?: StatsData;
+  data: StatsData;
 }
 
 export function StatsCards({ data }: StatsCardsProps) {
-  const stats = data || {
-    totalEmissions: 2450,
-    offsetCredits: 1850,
-    certificates: 12,
-    marketplaceTransactions: 8,
-    emissionsChange: -12.5,
-    offsetsChange: 23.8,
-  };
-
   const cards = [
     {
       title: 'Total Emissions',
-      value: `${stats.totalEmissions.toLocaleString()} kg`,
+      value: `${data.totalEmissions.toLocaleString()} kg`,
       description: 'CO₂e this year',
       icon: Activity,
-      change: stats.emissionsChange,
+      change: data.emissionsChange,
       changeLabel: 'vs last month',
     },
     {
       title: 'Offset Credits',
-      value: `${stats.offsetCredits.toLocaleString()} kg`,
+      value: `${data.offsetCredits.toLocaleString()} kg`,
       description: 'CO₂e offset',
       icon: Leaf,
-      change: stats.offsetsChange,
+      change: data.offsetsChange,
       changeLabel: 'vs last month',
     },
     {
       title: 'Certificates',
-      value: stats.certificates.toString(),
+      value: data.certificates.toString(),
       description: 'Verified certificates',
       icon: Award,
       change: null,
@@ -61,7 +52,7 @@ export function StatsCards({ data }: StatsCardsProps) {
     },
     {
       title: 'Marketplace',
-      value: stats.marketplaceTransactions.toString(),
+      value: data.marketplaceTransactions.toString(),
       description: 'Transactions',
       icon: ShoppingCart,
       change: null,
@@ -101,7 +92,7 @@ export function StatsCards({ data }: StatsCardsProps) {
                   >
                     {isPositive && <TrendingUp className="h-3 w-3 mr-1" />}
                     {isNegative && <TrendingDown className="h-3 w-3 mr-1" />}
-                    {Math.abs(card.change)}%
+                    {Math.abs(card.change).toFixed(1)}%
                   </Badge>
                 )}
               </div>

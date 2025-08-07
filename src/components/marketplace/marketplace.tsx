@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getHashScanUrl } from '@/lib/hedera';
+import { apiClient } from '@/lib/api-client';
 
 export function Marketplace() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,60 +40,21 @@ export function Marketplace() {
   const { data: credits, isLoading } = useCarbonCredits();
   const purchaseCarbonCredits = usePurchaseCarbonCredits(user?.id);
 
-  // Get user's Hedera Account ID from their EVM address
-  const getUserHederaAccountId = async (evmAddress: string): Promise<string | null> => {
-    const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
-    const mirrorNodeUrl = network === 'mainnet' 
-      ? 'https://mainnet.mirrornode.hedera.com' 
-      : 'https://testnet.mirrornode.hedera.com';
-      
-    try {
-      const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts?account.evmaddress=${evmAddress}`);
-      const data = await response.json();
-      
-      if (data.account) {
-        return data.account; // Returns "0.0.XXXXXX" format directly
-      }
-      return null;
-    } catch (error) {
-      console.error('Error converting EVM address to Hedera Account ID:', error);
-      return null;
-    }
-  };
-
-  // Get user's CO2e token balance
-  const getUserTokenBalance = async (hederaAccountId: string): Promise<number> => {
-    const network = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet';
-    const mirrorNodeUrl = network === 'mainnet' 
-      ? 'https://mainnet.mirrornode.hedera.com' 
-      : 'https://testnet.mirrornode.hedera.com';
-    
-    const tokenId = '0.0.6503424'; // CO2e token ID
-      
-    try {
-      const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${hederaAccountId}/tokens?token.id=${tokenId}`);
-      const data = await response.json();
-      
-      if (data.tokens && data.tokens.length > 0) {
-        return parseInt(data.tokens[0].balance) || 0;
-      }
-      return 0;
-    } catch (error) {
-      console.error('Error fetching token balance:', error);
-      return 0;
-    }
-  };
-
   // Load user's Hedera info when component mounts
   React.useEffect(() => {
     const loadUserHederaInfo = async () => {
       if (user?.wallet_address) {
-        const hederaAccountId = await getUserHederaAccountId(user.wallet_address);
+        console.log('🔍 Loading Hedera info for wallet:', user.wallet_address);
+        const hederaAccountId = await apiClient.getHederaAccountIdFromEvmAddress(user.wallet_address);
+        console.log('🔍 Found Hedera Account ID:', hederaAccountId);
         setUserHederaAccountId(hederaAccountId);
         
         if (hederaAccountId) {
-          const balance = await getUserTokenBalance(hederaAccountId);
+          const balance = await apiClient.getUserTokenBalance(hederaAccountId);
+          console.log('🔍 Found token balance:', balance);
           setUserTokenBalance(balance);
+        } else {
+          console.log('❌ No Hedera Account ID found for wallet:', user.wallet_address);
         }
       }
     };
@@ -161,7 +123,7 @@ export function Marketplace() {
 
       // Refresh user's token balance
       if (userHederaAccountId) {
-        const newBalance = await getUserTokenBalance(userHederaAccountId);
+        const newBalance = await apiClient.getUserTokenBalance(userHederaAccountId);
         setUserTokenBalance(newBalance);
       }
     } catch (error: any) {
@@ -204,16 +166,52 @@ export function Marketplace() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold">Carbon Credit Marketplace</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Purchase verified carbon credits to offset your emissions and support sustainable projects worldwide
-        </p>
-      </div>
+      {/* Enhanced Header */}
+      <Card className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600"></div>
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-6 right-20 w-20 h-20 border-2 border-white rounded-full"></div>
+          <div className="absolute top-12 right-32 w-12 h-12 border border-white rounded-full"></div>
+          <div className="absolute bottom-8 right-24 w-6 h-6 bg-white rounded-full"></div>
+          <div className="absolute top-16 right-8 w-8 h-8 border border-white rounded-full"></div>
+          <div className="absolute bottom-12 right-40 w-4 h-4 bg-white rounded-full"></div>
+        </div>
+        
+        {/* Main Icon */}
+        <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
+          <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm border-2 border-white border-opacity-30">
+            <Leaf className="w-10 h-10 text-white" />
+          </div>
+        </div>
+        
+        <CardContent className="relative z-10 py-8 px-6 text-white">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-extrabold text-white mb-6 tracking-tight leading-tight">
+              Carbon Credit Marketplace
+            </h1>
+            <p className="text-lg text-green-50 leading-relaxed mb-8 font-medium max-w-xl">
+              Purchase verified carbon credits to offset your emissions and support sustainable projects worldwide
+            </p>
+            <div className="flex gap-6 mt-6">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-300 rounded-full"></div>
+                <span className="text-green-100 font-semibold text-xs tracking-wide">Verified Projects</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-300 rounded-full"></div>
+                <span className="text-green-100 font-semibold text-xs tracking-wide">Blockchain Secured</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-300 rounded-full"></div>
+                <span className="text-green-100 font-semibold text-xs tracking-wide">Global Impact</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         {/* User Token Balance Card */}
         {user && userHederaAccountId && (
           <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">

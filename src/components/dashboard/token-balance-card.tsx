@@ -127,18 +127,22 @@ export function TokenBalanceCard() {
           </div>
 
           <div className="bg-white dark:bg-gray-900 p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">Hedera Account</p>
-            <p className="text-lg font-mono text-blue-600">
-              {hederaAccountId || user?.hedera_account_id || 'Not found'}
-            </p>
-            {(hederaAccountId || user?.hedera_account_id) && (
-              <Button variant="ghost" size="sm" asChild className="mt-1 p-0 h-auto">
-                <a href={getHashScanAccountUrl(hederaAccountId || user?.hedera_account_id!)} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  <span className="text-xs">View on HashScan</span>
-                </a>
-              </Button>
-            )}
+            <p className="text-sm text-muted-foreground mb-2 mt-2">Hedera Account</p>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold text-blue-600">
+                  {hederaAccountId || user?.hedera_account_id || 'Not found'}
+                </p>
+              </div>
+              {(hederaAccountId || user?.hedera_account_id) && (
+                <Button variant="ghost" size="sm" asChild className="p-0 h-auto">
+                  <a href={getHashScanAccountUrl(hederaAccountId || user?.hedera_account_id!)} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    <span className="text-xs text-muted-foreground">View on HashScan</span>
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

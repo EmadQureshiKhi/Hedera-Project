@@ -116,9 +116,11 @@ export function RecentActivity({ data }: RecentActivityProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
+        <CardTitle>
+          {data ? 'Recent Activity' : 'Platform Activity'}
+        </CardTitle>
         <CardDescription>
-          Your latest transactions and updates
+          {data ? 'Your latest transactions and updates' : 'Recent activities from our community'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -170,9 +172,6 @@ export function RecentActivity({ data }: RecentActivityProps) {
               </div>
             );
           })}
-        </div>
-        <div className="mt-6 text-center">
-          <Button variant="outline">View All Activity</Button>
         </div>
       </CardContent>
     </Card>
