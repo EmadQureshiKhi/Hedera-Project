@@ -99,21 +99,21 @@ export function GHGCertificatePreview({
         title: string;
         total_emissions: number;
         breakdown: Record<string, number>;
-        blockchain_tx: string | null;
-        hcs_message_id: string | null;
-        ipfs_cid: string | null;
-        hedera_nft_serial: string | null;
-        data_hash: string | null;
+        blockchain_tx?: string;
+        hcs_message_id?: string;
+        ipfs_cid?: string;
+        hedera_nft_serial?: string;
+        data_hash?: string;
       } = {
         certificate_id: `GHG-CALC-${Date.now()}`,
         title: `${questionnaire.orgName || 'Organization'} - GHG Calculator Certificate - ${format(new Date(), 'MMM yyyy')}`,
         total_emissions: totalEmissions,
         breakdown: calculations.categoryBreakdown,
-        blockchain_tx: null,
-        hcs_message_id: null,
-        ipfs_cid: null,
-        hedera_nft_serial: null,
-        data_hash: null,
+        blockchain_tx: undefined,
+        hcs_message_id: undefined,
+        ipfs_cid: undefined,
+        hedera_nft_serial: undefined,
+        data_hash: undefined,
       };
 
       // Generate comprehensive data hash from GHG calculator session
