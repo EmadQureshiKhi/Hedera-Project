@@ -71,11 +71,14 @@ export interface CarbonCredit {
 export interface Transaction {
   id: string;
   user_id: string;
-  credit_id: string;
+  credit_id: string | null;
   amount: number;
   total_price: number;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'completed' | 'failed' | 'pending_retirement' | 'completed_retirement' | 'failed_retirement';
   blockchain_tx?: string;
+  hedera_tx_id?: string;
+  retirement_hcs_message_id?: string;
+  ghg_certificate_id?: string;
   created_at: string;
 }
 
