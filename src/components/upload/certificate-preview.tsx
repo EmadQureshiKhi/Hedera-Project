@@ -28,7 +28,6 @@ import {
   isHederaConfigured 
 } from '@/lib/hedera';
 import { useAuth } from '@/hooks/use-auth';
-import { useEffect } from 'react';
 
 interface CertificatePreviewProps {
   calculations: any;
@@ -69,10 +68,11 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
         title: `Emissions Certificate - ${format(new Date(), 'MMM yyyy')}`,
         total_emissions: calculations.totalEmissions,
         breakdown: calculations.breakdown || calculations.categoryBreakdown,
-        blockchain_tx: null, // Will be updated with Hedera transaction ID
-        hcs_message_id: null, // Will be updated with HCS message ID
-        ipfs_cid: null, // Will be updated with IPFS CID
-        hedera_nft_serial: null, // Will be updated with NFT serial number
+        blockchain_tx: null as string | null,
+        hcs_message_id: null as string | null,
+        ipfs_cid: null as string | null,
+        hedera_nft_serial: null as number | null,
+        data_hash: '', // <-- FIX: add this property!
       };
 
       // Debug: Log calculations object before hashing
@@ -91,6 +91,7 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
       
       certificateData.data_hash = CryptoJS.SHA256(JSON.stringify(hashData)).toString();
       console.log('🔍 Generated data hash:', certificateData.data_hash);
+
       // 2. Generate IPFS CID for certificate metadata
       const certificateMetadata = {
         title: certificateData.title,
