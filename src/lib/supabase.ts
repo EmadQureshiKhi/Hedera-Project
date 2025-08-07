@@ -67,6 +67,7 @@ export interface CarbonCredit {
   verified: boolean;
   image_url: string;
   created_at: string;
+  hedera_token_id?: string;
 }
 
 export interface Transaction {
