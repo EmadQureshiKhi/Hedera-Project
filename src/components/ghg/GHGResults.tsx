@@ -166,13 +166,17 @@ const GHGResults: React.FC<GHGResultsProps> = ({
               <div>
                 <strong>Generate Certificate:</strong> Create blockchain-verified certificate on Hedera
               </div>
-              {Object.values(emissionFactors).some(scope => 
-                Object.values(scope).some(category => 
-                  Object.values(category).some(fuel => 
-                    typeof fuel === 'object' && fuel.custom
-                  )
-                )
-              ) && (
+              {Object.values(emissionFactors)
+                .filter(scope => typeof scope === 'object' && scope !== null)
+                .some(scope =>
+                  Object.values(scope)
+                    .filter(category => typeof category === 'object' && category !== null)
+                    .some(category =>
+                      Object.values(category)
+                        .filter(fuel => typeof fuel === 'object' && fuel !== null)
+                        .some(fuel => (fuel as any).custom)
+                    )
+                ) && (
                 <div>
                   <strong>Custom Fuels Sheet:</strong> User-defined emission factors
                 </div>
@@ -237,9 +241,13 @@ const GHGResults: React.FC<GHGResultsProps> = ({
               <p className="text-green-100 text-sm">{entries.length} activities</p>
             </div>
           </div>
-          {Object.values(customEquipmentTypes).some((category: any) => 
-            Object.values(category).some((equipment: any) => equipment.custom)
-          ) && (
+          {Object.values(customEquipmentTypes)
+            .filter(category => typeof category === 'object' && category !== null)
+            .some(category =>
+              Object.values(category)
+                .filter(equipment => typeof equipment === 'object' && equipment !== null)
+                .some(equipment => equipment.custom)
+            ) && (
             <div>
               <strong>Custom Equipment Sheet:</strong> User-defined equipment types
             </div>
