@@ -30,17 +30,27 @@ import {
   Database
 } from 'lucide-react';
 
-// Import your SemaClient type if not already in scope
-// import type { SemaClient } from '@/types/sema'; // <-- Uncomment and adjust path if needed
+// If you have a SemaClient type, import it here
+// import type { SemaClient } from '@/types/sema';
 
-export default function SemaAdminPanel() {
+interface SemaAdminPanelProps {
+  isOpenClientForm: boolean;
+  setIsOpenClientForm: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export default function SemaAdminPanel({
+  isOpenClientForm,
+  setIsOpenClientForm,
+}: SemaAdminPanelProps) {
   const { clients, addClient, updateClient, deleteClient, reloadClients, latestClientHcsTx } = useSema();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // FIX: Explicitly type editingClient as SemaClient | null
-  const [editingClient, setEditingClient] = useState<any | null>(null); // <-- Replace 'any' with 'SemaClient' if you have the type
+  // Remove internal isFormOpen state, use props instead
+  // const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // If you have a SemaClient type, use it instead of any
+  const [editingClient, setEditingClient] = useState<any | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -61,7 +71,7 @@ export default function SemaAdminPanel() {
       status: 'active'
     });
     setEditingClient(null);
-    setIsFormOpen(false);
+    setIsOpenClientForm(false);
   };
 
   const handleEdit = (client: any) => {
@@ -73,7 +83,7 @@ export default function SemaAdminPanel() {
       status: client.status
     });
     setEditingClient(client);
-    setIsFormOpen(true);
+    setIsOpenClientForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,14 +101,12 @@ export default function SemaAdminPanel() {
 
     try {
       if (editingClient) {
-        // FIX: Use non-null assertion for id
         await updateClient(editingClient!.id, formData);
         toast({
           title: "Client Updated",
           description: `${formData.name} has been updated successfully.`,
         });
       } else {
-        // Try direct Supabase insertion to debug
         const { data, error } = await supabase
           .from('sema_clients')
           .insert([{
@@ -122,8 +130,7 @@ export default function SemaAdminPanel() {
           title: "Client Added",
           description: `${formData.name} has been added successfully.`,
         });
-        
-        // Refresh the clients list
+
         await reloadClients();
       }
       resetForm();
@@ -177,7 +184,7 @@ export default function SemaAdminPanel() {
 
         <TabsContent value="clients" className="space-y-4">
           {/* Add/Edit Form */}
-          {isFormOpen && (
+          {isOpenClientForm && (
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -215,7 +222,7 @@ export default function SemaAdminPanel() {
                       <Label htmlFor="size">Organization Size</Label>
                       <Select
                         value={formData.size}
-                        onValueChange={(value: 'Small' | 'Medium' | 'Large' | 'Enterprise') => 
+                        onValueChange={(value: 'Small' | 'Medium' | 'Large' | 'Enterprise') =>
                           setFormData(prev => ({ ...prev, size: value }))
                         }
                       >
@@ -235,7 +242,7 @@ export default function SemaAdminPanel() {
                       <Label htmlFor="status">Status</Label>
                       <Select
                         value={formData.status}
-                        onValueChange={(value: 'active' | 'inactive') => 
+                        onValueChange={(value: 'active' | 'inactive') =>
                           setFormData(prev => ({ ...prev, status: value }))
                         }
                       >
@@ -283,7 +290,7 @@ export default function SemaAdminPanel() {
                     Manage SEMA client organizations and their settings
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsFormOpen(true)}>
+                <Button onClick={() => setIsOpenClientForm(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Client
                 </Button>
@@ -343,7 +350,7 @@ export default function SemaAdminPanel() {
           </Card>
 
           {/* HCS Transaction Display */}
-          <HcsTransactionDisplay 
+          <HcsTransactionDisplay
             transaction={latestClientHcsTx}
             title="Client Management Verification"
             description="Latest client management action logged to Hedera Consensus Service"
