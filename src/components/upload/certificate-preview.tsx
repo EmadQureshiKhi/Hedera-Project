@@ -68,11 +68,11 @@ export function CertificatePreview({ calculations, emissionDataId, onGenerate, o
         title: `Emissions Certificate - ${format(new Date(), 'MMM yyyy')}`,
         total_emissions: calculations.totalEmissions,
         breakdown: calculations.breakdown || calculations.categoryBreakdown,
-        blockchain_tx: null as string | null,
-        hcs_message_id: null as string | null,
-        ipfs_cid: null as string | null,
-        hedera_nft_serial: null as number | null,
-        data_hash: '', // <-- FIX: add this property!
+        blockchain_tx: undefined as string | undefined,
+        hcs_message_id: undefined as string | undefined,
+        ipfs_cid: undefined as string | undefined,
+        hedera_nft_serial: undefined as number | undefined,
+        data_hash: '',
       };
 
       // Debug: Log calculations object before hashing
