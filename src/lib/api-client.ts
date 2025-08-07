@@ -195,7 +195,8 @@ class ApiClient {
     };
 
     if (DEMO_MODE) {
-      const user = { id: `user-${Date.now()}`, ...userData };
+      // FIX: always provide a string for email
+      const user = { id: `user-${Date.now()}`, ...userData, email: userData.email || '' };
       this.demoData.users.push(user);
       return user;
     }
