@@ -79,7 +79,7 @@ export interface SemaMaterialTopic {
   name: string;
   description?: string;
   category: 'Economic' | 'Environmental' | 'Social';
-  gri_code?: string;
+  gri_code?: string | null;
   average_score: number;
   response_count: number;
   is_material: boolean;
