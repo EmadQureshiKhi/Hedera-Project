@@ -20,6 +20,7 @@ export interface QuestionnaireData {
     convertedFactor: number;
     emissions: number;
     timestamp: string;
+    equipmentType?: string;
   }
   
   export interface CustomFuel {
