@@ -175,9 +175,6 @@ export function GHGCertificatePreview({
               dataHash: certificateData.data_hash,
               totalEmissions: certificateData.total_emissions,
               breakdown: certificateData.breakdown,
-              organization: questionnaire.orgName,
-              assessmentType: 'GHG Calculator',
-              entriesCount: entries.length,
               timestamp: new Date().toISOString()
             });
             certificateData.hcs_message_id = hcsLogTxId;
