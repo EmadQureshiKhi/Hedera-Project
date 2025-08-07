@@ -48,8 +48,9 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
   // Get available options for dropdowns
   const getAvailableOptions = () => {
     try {
+      const scope = currentCalculation.scope as keyof EmissionFactorsDatabase;
       if (currentCalculation.scope === 'Scope 1') {
-        const categories = Object.keys(emissionFactors[currentCalculation.scope] || {});
+        const categories = Object.keys(emissionFactors[scope] || {});
       
         let equipmentOptions: string[] = [];
         let fuelCategories: string[] = [];
@@ -59,21 +60,21 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
           equipmentOptions = getEquipmentOptionsWithCustom(currentCalculation.category, customEquipmentTypes);
         }
       
-        if (currentCalculation.category && emissionFactors[currentCalculation.scope][currentCalculation.category]) {
-          fuelCategories = Object.keys(emissionFactors[currentCalculation.scope][currentCalculation.category]);
+        if (currentCalculation.category && emissionFactors[scope][currentCalculation.category]) {
+          fuelCategories = Object.keys(emissionFactors[scope][currentCalculation.category]);
         
-          if (currentCalculation.fuelCategory && emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory]) {
-            fuelTypes = Object.keys(emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory]);
+          if (currentCalculation.fuelCategory && emissionFactors[scope][currentCalculation.category][currentCalculation.fuelCategory]) {
+            fuelTypes = Object.keys(emissionFactors[scope][currentCalculation.category][currentCalculation.fuelCategory]);
           }
         }
       
         return { categories, equipmentOptions, fuelCategories, fuelTypes };
       } else {
-        const fuelCategories = Object.keys(emissionFactors[currentCalculation.scope] || {});
+        const fuelCategories = Object.keys(emissionFactors[scope] || {});
       
         let fuelTypes: string[] = [];
-        if (currentCalculation.fuelCategory && emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory]) {
-          fuelTypes = Object.keys(emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory]);
+        if (currentCalculation.fuelCategory && emissionFactors[scope][currentCalculation.fuelCategory]) {
+          fuelTypes = Object.keys(emissionFactors[scope][currentCalculation.fuelCategory]);
         }
       
         return { categories: [], equipmentOptions: [], fuelCategories, fuelTypes };
@@ -117,6 +118,7 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
   // Handle category change and reset dependent fields
   const handleCategoryChange = (category: string) => {
     setCurrentCalculation(prev => {
+      const scope = prev.scope as keyof EmissionFactorsDatabase;
       const newState = { ...prev, category, equipmentType: '' };
     
       // Set default equipment type
@@ -126,12 +128,12 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
       }
     
       // Reset fuel category and fuel type when category changes
-      const newFuelCategories = Object.keys(emissionFactors[prev.scope][category] || {});
+      const newFuelCategories = Object.keys(emissionFactors[scope][category] || {});
       if (newFuelCategories.length > 0) {
         newState.fuelCategory = newFuelCategories[0];
       
         // Reset fuel type based on new fuel category
-        const newFuelTypes = Object.keys(emissionFactors[prev.scope][category][newFuelCategories[0]] || {});
+        const newFuelTypes = Object.keys(emissionFactors[scope][category][newFuelCategories[0]] || {});
         if (newFuelTypes.length > 0) {
           newState.fuelType = newFuelTypes[0];
         }
@@ -149,14 +151,15 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
   // Handle fuel category change and reset fuel type
   const handleFuelCategoryChange = (fuelCategory: string) => {
     setCurrentCalculation(prev => {
+      const scope = prev.scope as keyof EmissionFactorsDatabase;
       const newState = { ...prev, fuelCategory };
     
       // Reset fuel type when fuel category changes
       let newFuelTypes: string[] = [];
       if (prev.scope === 'Scope 1') {
-        newFuelTypes = Object.keys(emissionFactors[prev.scope][prev.category][fuelCategory] || {});
+        newFuelTypes = Object.keys(emissionFactors[scope][prev.category][fuelCategory] || {});
       } else {
-        newFuelTypes = Object.keys(emissionFactors[prev.scope][fuelCategory] || {});
+        newFuelTypes = Object.keys(emissionFactors[scope][fuelCategory] || {});
       }
     
       if (newFuelTypes.length > 0) {
@@ -404,14 +407,15 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
             {/* Delete Custom Fuel */}
             {fuelTypes.some(ft => {
               try {
+                const scope = currentCalculation.scope as keyof EmissionFactorsDatabase;
                 if (currentCalculation.scope === 'Scope 1') {
-                  const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory];
+                  const fuelCategoryObj = emissionFactors[scope][currentCalculation.category][currentCalculation.fuelCategory];
                   if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && ft in fuelCategoryObj) {
                     return (fuelCategoryObj as { [fuelType: string]: any })[ft]?.custom;
                   }
                   return false;
                 } else {
-                  const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory];
+                  const fuelCategoryObj = emissionFactors[scope][currentCalculation.fuelCategory];
                   if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && ft in fuelCategoryObj) {
                     return (fuelCategoryObj as { [fuelType: string]: any })[ft]?.custom;
                   }
@@ -430,14 +434,15 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
                   onClick={() => onDeleteCustomFuel(currentCalculation.fuelType)}
                   disabled={!(() => {
                     try {
+                      const scope = currentCalculation.scope as keyof EmissionFactorsDatabase;
                       if (currentCalculation.scope === 'Scope 1') {
-                        const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.category][currentCalculation.fuelCategory];
+                        const fuelCategoryObj = emissionFactors[scope][currentCalculation.category][currentCalculation.fuelCategory];
                         if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && currentCalculation.fuelType in fuelCategoryObj) {
                           return (fuelCategoryObj as { [fuelType: string]: any })[currentCalculation.fuelType]?.custom;
                         }
                         return false;
                       } else {
-                        const fuelCategoryObj = emissionFactors[currentCalculation.scope][currentCalculation.fuelCategory];
+                        const fuelCategoryObj = emissionFactors[scope][currentCalculation.fuelCategory];
                         if (fuelCategoryObj && typeof fuelCategoryObj === 'object' && currentCalculation.fuelType in fuelCategoryObj) {
                           return (fuelCategoryObj as { [fuelType: string]: any })[currentCalculation.fuelType]?.custom;
                         }
@@ -454,7 +459,7 @@ const GHGCalculatorForm: React.FC<GHGCalculatorFormProps> = ({
                 </button>
               </div>
             )}
-          </div> {/* <-- Closing brace for custom types grid */}
+          </div>
         </div>
 
         {/* Activity Data */}
