@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCreateCertificate, useSaveEmissionData } from '@/hooks/use-api';
 import { supabase } from '@/lib/supabase';
-import { 
-  Award, 
-  Download, 
-  Share2, 
+import {
+  Award,
+  Download,
+  Share2,
   CheckCircle,
   ArrowLeft,
   Loader2,
@@ -19,13 +19,13 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CryptoJS from 'crypto-js';
-import { 
-  submitHCSMessage, 
-  mintNFT, 
+import {
+  submitHCSMessage,
+  mintNFT,
   logCertificateToHCS,
   uploadToIPFS,
   getHashScanUrl,
-  isHederaConfigured 
+  isHederaConfigured
 } from '@/lib/hedera';
 import { useAuth } from '@/hooks/use-auth';
 import { QuestionnaireData, EmissionEntry } from '@/types/ghg';
@@ -52,13 +52,13 @@ interface GHGCertificatePreviewProps {
 const HEDERA_CERTIFICATE_NFT_TOKEN_ID = process.env.NEXT_PUBLIC_HEDERA_NFT_TOKEN_ID;
 const HEDERA_HCS_TOPIC_ID = process.env.NEXT_PUBLIC_HEDERA_HCS_TOPIC_ID;
 
-export function GHGCertificatePreview({ 
-  questionnaire, 
-  entries, 
-  totalEmissions, 
-  calculations, 
-  onGenerate, 
-  onPrevious 
+export function GHGCertificatePreview({
+  questionnaire,
+  entries,
+  totalEmissions,
+  calculations,
+  onGenerate,
+  onPrevious
 }: GHGCertificatePreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [certificate, setCertificate] = useState<any>(null);
@@ -68,10 +68,10 @@ export function GHGCertificatePreview({
   const [hederaError, setHederaError] = useState<string | null>(null);
   const [ipfsCid, setIpfsCid] = useState<string | null>(null);
   const { user } = useAuth();
-  
+
   // Check if user has email linked
   const hasEmailLinked = user?.email && user.email.trim().length > 0;
-  
+
   const createCertificate = useCreateCertificate(user?.id);
   const saveEmissionData = useSaveEmissionData();
 
@@ -81,8 +81,6 @@ export function GHGCertificatePreview({
 
     try {
       // 1. First save the GHG calculator session data to emission_data table
-      console.log('💾 Saving GHG calculator session data...');
-      
       const emissionDataResult = await saveEmissionData.mutateAsync({
         userId: user!.id,
         data: {
@@ -95,28 +93,29 @@ export function GHGCertificatePreview({
         }
       });
 
-      console.log('✅ GHG session data saved:', emissionDataResult);
-
       // 2. Generate certificate data structure
-      const certificateData = {
+      const certificateData: {
+        certificate_id: string;
+        title: string;
+        total_emissions: number;
+        breakdown: Record<string, number>;
+        blockchain_tx: string | null;
+        hcs_message_id: string | null;
+        ipfs_cid: string | null;
+        hedera_nft_serial: string | null;
+        data_hash: string | null;
+      } = {
         certificate_id: `GHG-CALC-${Date.now()}`,
         title: `${questionnaire.orgName || 'Organization'} - GHG Calculator Certificate - ${format(new Date(), 'MMM yyyy')}`,
         total_emissions: totalEmissions,
         breakdown: calculations.categoryBreakdown,
-        blockchain_tx: null, // Will be updated with Hedera transaction ID
-        hcs_message_id: null, // Will be updated with HCS message ID
-        ipfs_cid: null, // Will be updated with IPFS CID
-        hedera_nft_serial: null, // Will be updated with NFT serial number
+        blockchain_tx: null,
+        hcs_message_id: null,
+        ipfs_cid: null,
+        hedera_nft_serial: null,
+        data_hash: null,
       };
 
-      // Debug: Log GHG calculator data before hashing
-      console.log('🔍 GHG Calculator data for hashing:', {
-        questionnaire,
-        entries: entries.length,
-        totalEmissions,
-        calculations
-      });
-      
       // Generate comprehensive data hash from GHG calculator session
       const hashData = {
         questionnaire: {
@@ -140,11 +139,8 @@ export function GHGCertificatePreview({
         })),
         timestamp: new Date().toISOString()
       };
-      
-      console.log('🔍 GHG hash data object:', hashData);
-      
+
       certificateData.data_hash = CryptoJS.SHA256(JSON.stringify(hashData)).toString();
-      console.log('🔍 Generated GHG data hash:', certificateData.data_hash);
 
       // 3. Generate IPFS CID for certificate metadata
       const certificateMetadata = {
@@ -160,23 +156,19 @@ export function GHGCertificatePreview({
         generatedAt: new Date().toISOString(),
         version: '1.0'
       };
-      
+
       const ipfsCid = await uploadToIPFS(certificateMetadata);
       certificateData.ipfs_cid = ipfsCid;
       setIpfsCid(ipfsCid);
 
-      // 4. Hedera integrations (if configured) - Do BEFORE saving to database
+      // 4. Hedera integrations (if configured)
       if (isHederaConfigured()) {
         try {
-          // 4a. Mint NFT on Hedera (if token ID is configured)
           if (HEDERA_CERTIFICATE_NFT_TOKEN_ID) {
             const nftTxId = await mintNFT(HEDERA_CERTIFICATE_NFT_TOKEN_ID, ipfsCid);
             certificateData.blockchain_tx = nftTxId;
             setHederaTxId(nftTxId);
-            console.log('✅ GHG Certificate NFT minted on Hedera:', nftTxId);
           }
-
-          // 4b. Log to HCS (if topic ID is configured)
           if (HEDERA_HCS_TOPIC_ID) {
             const hcsLogTxId = await logCertificateToHCS(HEDERA_HCS_TOPIC_ID, {
               certificateId: certificateData.certificate_id,
@@ -190,12 +182,9 @@ export function GHGCertificatePreview({
             });
             certificateData.hcs_message_id = hcsLogTxId;
             setHcsTxId(hcsLogTxId);
-            console.log('✅ GHG Certificate logged to HCS:', hcsLogTxId);
           }
         } catch (hederaErr: any) {
-          console.error('Hedera integration error:', hederaErr);
           setHederaError(`Hedera integration failed: ${hederaErr.message || hederaErr}`);
-          // Continue with certificate generation even if Hedera fails
         }
       } else {
         setHederaError('Hedera not configured. Certificate saved locally only.');
@@ -210,10 +199,7 @@ export function GHGCertificatePreview({
       setCertificate(result);
       onGenerate(result);
     } catch (error) {
-      console.error('Failed to create GHG certificate:', error);
-      
       let errorMessage = 'Unknown error occurred';
-      
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
@@ -221,7 +207,6 @@ export function GHGCertificatePreview({
       } else {
         errorMessage = String(error);
       }
-      
       setHederaError(`Failed to create certificate: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
@@ -255,12 +240,12 @@ Total Activities: ${entries.length}
 Assessment Date: ${format(new Date(), 'PPP')}
 
 EMISSIONS BREAKDOWN BY CATEGORY:
-${Object.entries(calculations.categoryBreakdown).map(([category, emissions]) => 
+${Object.entries(calculations.categoryBreakdown).map(([category, emissions]) =>
   `${category}: ${Number(emissions).toFixed(2)} kg CO₂e`
 ).join('\n')}
 
 DETAILED CALCULATIONS:
-${entries.map((entry, index) => 
+${entries.map((entry, index) =>
   `${index + 1}. ${entry.scope} - ${entry.fuelType}: ${entry.amount} ${entry.unit_type} = ${entry.emissions.toFixed(2)} kg CO₂e`
 ).join('\n')}
 
@@ -299,7 +284,6 @@ Generated: ${new Date().toLocaleString()}
           </CardDescription>
         </CardHeader>
         <CardContent className="relative space-y-6">
-          {/* Certificate Content */}
           <div className="bg-white dark:bg-gray-900 p-8 rounded-lg border-2 border-green-200 dark:border-green-800 shadow-lg">
             <div className="text-center space-y-4 mb-8">
               <div className="w-16 h-16 mx-auto bg-green-600 rounded-full flex items-center justify-center">
