@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface User {
   id: string;
   wallet_address: string | null; // Allow null wallet addresses
-  email?: string;
+  email?: string | null;
   hedera_account_id?: string | null; // Add Hedera Account ID field
   created_at: string;
   updated_at: string;
