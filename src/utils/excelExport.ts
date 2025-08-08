@@ -8,6 +8,17 @@ export interface ExportData {
   totalEmissions: number;
 }
 
+// Minimal type guard for emission factors
+function isEmissionFactor(obj: any): obj is { custom: boolean; factor: number; timestamp?: string } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'custom' in obj &&
+    typeof obj.custom === 'boolean' &&
+    'factor' in obj
+  );
+}
+
 export const exportToExcel = async (
   data: ExportData, 
   format: 'excel' | 'csv' = 'excel',
@@ -90,7 +101,7 @@ export const exportToExcel = async (
   const findCustomFuels = (obj: any, path: string[] = []) => {
     Object.entries(obj).forEach(([key, value]) => {
       if (typeof value === 'object' && value !== null) {
-        if (value.custom === true) {
+        if (isEmissionFactor(value) && value.custom === true) {
           customFuels.push({
             path: [...path, key].join(' > '),
             factor: value.factor,
