@@ -206,7 +206,9 @@ class AuthService {
         });
       } else if (pendingWallet && !user.wallet_address) {
         // Link wallet to existing OAuth user
-        user = await this.updateUserWallet(user.id, pendingWallet.address);
+        // FIX: Use the correct method and fetch Hedera Account ID
+        const hederaAccountId = await apiClient.getHederaAccountIdFromEvmAddress(pendingWallet.address);
+        user = await this._updateUserWalletAndHederaId(user.id, pendingWallet.address, hederaAccountId);
       }
 
       this._setInternalCurrentUser(user);
