@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://i.ibb.co/KxHMRvj1/Screenshot-2025-08-08-at-11-10-28-PM.png" alt="GreenTrace Platform Screenshot" width="700"/>
+</p>
+
 # GreenTrace - Verifiable Carbon Management Platform
 
 A comprehensive blockchain-powered platform for tracking, calculating, and verifying greenhouse gas emissions with immutable certificates and carbon offset marketplace on Hedera Hashgraph.
@@ -252,9 +256,48 @@ This project is built for the **Hedera Hello Future: Origins** hackathon in the 
 
 ### Project Links
 
-- **GitHub Repository**: [YOUR_GITHUB_LINK_HERE]
-- **Demo Video**: [YOUR_YOUTUBE_DEMO_LINK_HERE]
-- **Documentation**: [YOUR_GOOGLE_DRIVE_LINK_HERE]
+- **GitHub Repository (Frontend)**: [https://github.com/EmadQureshiKhi/Hedera-Project](https://github.com/EmadQureshiKhi/Hedera-Project)
+- **GitHub Repository (Backend)**: [https://github.com/EmadQureshiKhi/Hedera-backend-listner](https://github.com/EmadQureshiKhi/Hedera-backend-listner)
+- **Demo Video**: [https://www.youtube.com/watch?v=DG0PUKomthw](https://www.youtube.com/watch?v=DG0PUKomthw)
+- **Documentation**: [https://drive.google.com/file/d/1Wa71vzYt9zixD5rB02o-2VIj3MUKdx4x/view?usp=sharing](https://drive.google.com/file/d/1Wa71vzYt9zixD5rB02o-2VIj3MUKdx4x/view?usp=sharing)
+
+### Deployment Information
+
+- **Frontend Hosting**: Deployed on [Vercel](https://vercel.com) for optimal performance and global CDN
+- **Backend Listener**: Deployed on [Railway](https://railway.app) for reliable event processing
+
+#### Backend Setup Instructions
+
+To run the backend listener service locally or deploy it:
+
+1. **Clone the backend repository:**
+```bash
+git clone https://github.com/EmadQureshiKhi/Hedera-backend-listner
+cd Hedera-backend-listner
+```
+
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+3. **Set up environment variables:**
+```bash
+cp .env.example .env.local
+```
+Edit `.env.local` with your Hedera and Supabase credentials.
+
+4. **Run the backend listener:**
+```bash
+npm start
+```
+
+For development with auto-restart:
+```bash
+npm run dev
+```
+
+The backend listener monitors Hedera smart contract events and processes carbon credit retirement transactions automatically.
 
 ## 🛠️ Development
 
@@ -388,17 +431,56 @@ MIT License - see LICENSE file for details.
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📞 Support & Resources
+- **Treasury Account**: [0.0.6362296](https://hashscan.io/testnet/account/0.0.6362296)
+- **CO2e Token**: [0.0.6503424](https://hashscan.io/testnet/token/0.0.6503424)
+- **NFT Collection**: [0.0.6493589](https://hashscan.io/testnet/token/0.0.6493589)
+- **HCS Topic**: [0.0.6493588](https://hashscan.io/testnet/topic/0.0.6493588)
+- **Smart Contract**: [0x7De9dc37043E5601ceF6a306B7C77b956d4DF703](https://hashscan.io/testnet/contract/0x7De9dc37043E5601ceF6a306B7C77b956d4DF703)
 
 ### Project Links
-- **GitHub Repository**: [YOUR_GITHUB_LINK_HERE]
-- **Demo Video**: [YOUR_YOUTUBE_DEMO_LINK_HERE]
-- **Documentation**: [YOUR_GOOGLE_DRIVE_LINK_HERE]
+
+- **GitHub Repository (Frontend)**: [https://github.com/EmadQureshiKhi/Hedera-Project](https://github.com/EmadQureshiKhi/Hedera-Project)
+- **GitHub Repository (Backend)**: [https://github.com/EmadQureshiKhi/Hedera-backend-listner](https://github.com/EmadQureshiKhi/Hedera-backend-listner)
+- **Demo Video**: [https://www.youtube.com/watch?v=DG0PUKomthw](https://www.youtube.com/watch?v=DG0PUKomthw)
+- **Documentation**: [https://drive.google.com/file/d/1Wa71vzYt9zixD5rB02o-2VIj3MUKdx4x/view?usp=sharing](https://drive.google.com/file/d/1Wa71vzYt9zixD5rB02o-2VIj3MUKdx4x/view?usp=sharing)
+
+### Deployment Information
+
+- **Frontend Hosting**: Deployed on [Vercel](https://vercel.com) for optimal performance and global CDN
+- **Backend Listener**: Deployed on [Railway](https://railway.app) for reliable event processing
+
+#### Backend Setup Instructions
+
+To run the backend listener service locally or deploy it:
+
+1. **Clone the backend repository:**
+```bash
+git clone https://github.com/EmadQureshiKhi/Hedera-backend-listner
+cd Hedera-backend-listner
+```
+
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+3. **Set up environment variables:**
+```bash
+cp .env.example .env.local
+```
+Edit `.env.local` with your Hedera and Supabase credentials.
+
+4. **Run the backend listener:**
+```bash
+npm start
+```
+
+For development with auto-restart:
+```bash
+npm run dev
+```
+
+The backend listener monitors Hedera smart contract events and processes carbon credit retirement transactions automatically.
 
 ### Hedera Resources
 - **Hedera Documentation**: [docs.hedera.com](https://docs.hedera.com)
@@ -412,4 +494,14 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Built with ❤️ for a sustainable future on Hedera**
+**Built with ❤️ for a sustainable future on Hedera Hashgraph**
+
+---
+
+### **Important Testing Disclaimer**
+
+If you plan to run or test this project, please follow this authentication flow for full functionality:
+1. **Login with Gmail** first
+2. **Link a Hedera testnet wallet (MetaMask)** via the user menu (top right, after logging in)
+
+This specific authentication sequence ensures all features work correctly while I address some authentication routing issues with alternative login methods.
