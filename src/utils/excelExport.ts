@@ -19,6 +19,17 @@ function isEmissionFactor(obj: any): obj is { custom: boolean; factor: number; t
   );
 }
 
+// Minimal type guard for custom equipment
+function isCustomEquipmentType(obj: any): obj is { custom: boolean; description: string; timestamp?: string } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'custom' in obj &&
+    typeof obj.custom === 'boolean' &&
+    'description' in obj
+  );
+}
+
 export const exportToExcel = async (
   data: ExportData, 
   format: 'excel' | 'csv' = 'excel',
@@ -132,17 +143,19 @@ export const exportToExcel = async (
 
   // 6. Custom Equipment Sheet (if any exist)
   const customEquipment: any[] = [];
-  Object.entries(customEquipmentTypes).forEach(([category, equipment]) => {
-    Object.entries(equipment).forEach(([name, details]: [string, any]) => {
-      if (details.custom === true) {
-        customEquipment.push({
-          category,
-          name,
-          description: details.description,
-          timestamp: details.timestamp || 'Unknown'
-        });
-      }
-    });
+  Object.entries(customEquipmentTypes ?? {}).forEach(([category, equipment]) => {
+    if (typeof equipment === 'object' && equipment !== null) {
+      Object.entries(equipment as Record<string, unknown>).forEach(([name, details]) => {
+        if (isCustomEquipmentType(details) && details.custom === true) {
+          customEquipment.push({
+            category,
+            name,
+            description: details.description,
+            timestamp: details.timestamp || 'Unknown'
+          });
+        }
+      });
+    }
   });
 
   if (customEquipment.length > 0) {
