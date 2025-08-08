@@ -58,7 +58,7 @@ export const exportToExcel = async (
         entry.equipmentType || 'N/A',
         entry.fuelCategory,
         entry.fuelType,
-        entry.amount,
+        entry.amount.toString(),
         entry.unit_type,
         entry.convertedFactor.toFixed(6),
         entry.emissions.toFixed(2),
