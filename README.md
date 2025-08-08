@@ -430,7 +430,7 @@ MIT License - see LICENSE file for details.
 
 ## 🤝 Contributing
 
-1. Fork the repository
+
 - **Treasury Account**: [0.0.6362296](https://hashscan.io/testnet/account/0.0.6362296)
 - **CO2e Token**: [0.0.6503424](https://hashscan.io/testnet/token/0.0.6503424)
 - **NFT Collection**: [0.0.6493589](https://hashscan.io/testnet/token/0.0.6493589)
@@ -448,39 +448,6 @@ MIT License - see LICENSE file for details.
 
 - **Frontend Hosting**: Deployed on [Vercel](https://vercel.com) for optimal performance and global CDN
 - **Backend Listener**: Deployed on [Railway](https://railway.app) for reliable event processing
-
-#### Backend Setup Instructions
-
-To run the backend listener service locally or deploy it:
-
-1. **Clone the backend repository:**
-```bash
-git clone https://github.com/EmadQureshiKhi/Hedera-backend-listner
-cd Hedera-backend-listner
-```
-
-2. **Install dependencies:**
-```bash
-npm install
-```
-
-3. **Set up environment variables:**
-```bash
-cp .env.example .env.local
-```
-Edit `.env.local` with your Hedera and Supabase credentials.
-
-4. **Run the backend listener:**
-```bash
-npm start
-```
-
-For development with auto-restart:
-```bash
-npm run dev
-```
-
-The backend listener monitors Hedera smart contract events and processes carbon credit retirement transactions automatically.
 
 ### Hedera Resources
 - **Hedera Documentation**: [docs.hedera.com](https://docs.hedera.com)
