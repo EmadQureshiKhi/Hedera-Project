@@ -589,7 +589,7 @@ class AuthService {
         params: [message, walletAddress]
       });
 
-      const user = await this.authenticateWallet(walletAddress, signature, message);
+      const user = await this.authenticateWallet(walletAddress, signature as string, message);
 
       // Disconnect after successful authentication
       await provider.disconnect();
