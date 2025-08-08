@@ -177,6 +177,9 @@ export const mintNFT = async (tokenId: string, metadataCid: string): Promise<str
     const mintRx = await mintTxSubmit.getReceipt(client);
     
     console.log(`NFT Minted: ${mintRx.status.toString()} - Serial: ${mintRx.serials?.[0]}`);
+    if (!mintTx.transactionId) {
+      throw new Error('Transaction ID is missing from mintTx.');
+    }
     return mintTx.transactionId.toString();
   } catch (error) {
     console.error('Error minting NFT:', error);
