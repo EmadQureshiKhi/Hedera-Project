@@ -11,7 +11,7 @@ export interface User {
   id: string;
   wallet_address: string | null; // Allow null wallet addresses
   email?: string;
-  hedera_account_id?: string; // Add Hedera Account ID field
+  hedera_account_id?: string | null; // Add Hedera Account ID field
   created_at: string;
   updated_at: string;
 }
