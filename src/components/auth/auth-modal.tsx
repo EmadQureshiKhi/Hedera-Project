@@ -100,6 +100,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
         duration: 30000,
         variant: 'info',
       });
+      onClose();
       setActiveTab('signin');
     } catch (err: any) {
       setError(err.message || 'Wallet connection failed');
