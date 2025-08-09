@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth, useWalletAvailability } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { authService } from '@/lib/auth';
 import {
   Mail,
   Lock,
@@ -100,6 +101,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'signin' }: AuthModalP
         duration: 30000,
         variant: 'info',
       });
+      authService.clearPendingWalletConnection();
       onClose();
       setActiveTab('signin');
     } catch (err: any) {
